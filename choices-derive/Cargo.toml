@@ -1,0 +1,20 @@
+[package]
+name = "choices-derive"
+version = "0.1.0"
+authors = ["Trisfald <trisfald@gmail.com>"]
+description = "HTTP configuration service by defining a struct, derive crate."
+documentation = "https://docs.rs/choices-derive"
+repository = "https://github.com/trisfald/choices"
+keywords = ["configuration", "derive", "http"]
+categories = ["configuration", "web-programming"]
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+syn = { version = "1", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+proc-macro-error = "1"
+
+[lib]
+proc-macro = true
