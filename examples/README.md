@@ -7,3 +7,7 @@ Create a simple read only configuration.
 ### [Custom warp server](custom_warp_server.rs)
 
 Run the configuration service on your own server instance.
+
+### [Configure root path](configure_root_path.rs)
+
+Customizing the configuration root path.
