@@ -5,15 +5,27 @@
 
 extern crate proc_macro;
 
+mod attributes;
+
+use crate::attributes::Attributes;
+use derive_new::new;
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort_call_site, proc_macro_error, set_dummy};
 use quote::quote;
 use syn::{punctuated::Punctuated, token::Comma, *};
 
-const BASE_PATH: &str = "config";
+const DEFAULT_ROOT_PATH: &str = "config";
+
+/// Output of generator methods.
+#[derive(new)]
+struct GenOutput {
+    macro_block: TokenStream,
+    impl_block: TokenStream,
+    trait_block: TokenStream,
+}
 
 /// Generates the `Choices` impl.
-#[proc_macro_derive(Choices)]
+#[proc_macro_derive(Choices, attributes(choices))]
 #[proc_macro_error]
 pub fn choices(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: DeriveInput = syn::parse(input).unwrap();
@@ -45,12 +57,16 @@ fn impl_choices(input: &DeriveInput) -> TokenStream {
 fn impl_choices_for_struct(
     name: &Ident,
     fields: &Punctuated<Field, Comma>,
-    _attrs: &[Attribute],
+    attrs: &[Attribute],
 ) -> TokenStream {
-    let (macros, implementation, choices) = gen_choices_warp(fields);
+    let choices = gen_choices_warp(fields, attrs);
+
+    let macro_block = choices.macro_block;
+    let impl_block = choices.impl_block;
+    let trait_block = choices.trait_block;
 
     quote! {
-        #macros
+        #macro_block
 
         #[allow(unused_variables)]
         #[allow(unknown_lints)]
@@ -67,7 +83,7 @@ fn impl_choices_for_struct(
         #[deny(clippy::correctness)]
         #[allow(dead_code, unreachable_code)]
         impl #name {
-            #implementation
+            #impl_block
         }
 
         #[allow(unused_variables)]
@@ -86,12 +102,15 @@ fn impl_choices_for_struct(
         #[allow(dead_code, unreachable_code)]
         #[async_trait::async_trait]
         impl ::choices::Choices for #name {
-            #choices
+            #trait_block
         }
     }
 }
 
-fn gen_choices_warp(fields: &Punctuated<Field, Comma>) -> (TokenStream, TokenStream, TokenStream) {
+fn gen_choices_warp(fields: &Punctuated<Field, Comma>, struct_attrs: &[Attribute]) -> GenOutput {
+    let attrs = Attributes::from_struct(struct_attrs);
+    let root_path = attrs.root_path.unwrap_or(quote! { #DEFAULT_ROOT_PATH });
+
     let fields_populators = fields.iter().map(|field| {
         let field_ident = field
             .ident
@@ -99,7 +118,7 @@ fn gen_choices_warp(fields: &Punctuated<Field, Comma>) -> (TokenStream, TokenStr
             .expect("unnamed fields are not supported!");
         let field_name = field_ident.to_string();
         Some(quote! {
-            warp::path!(#BASE_PATH / #field_name).map(move || format!("{}", $self.#field_ident.body_string()) )
+            warp::path!(#root_path / #field_name).map(move || format!("{}", $self.#field_ident.body_string()) )
         })
     });
 
@@ -112,7 +131,7 @@ fn gen_choices_warp(fields: &Punctuated<Field, Comma>) -> (TokenStream, TokenStr
                 #[allow(unused_imports)]
                 use choices::ChoicesOutput;
 
-                let index = warp::path(#BASE_PATH).map(|| #index_string);
+                let index = warp::path(#root_path).map(|| #index_string);
                 warp::get().and(
                     index.and(warp::path::end())
                     #( .or(#fields_populators) )*
@@ -137,9 +156,10 @@ fn gen_choices_warp(fields: &Punctuated<Field, Comma>) -> (TokenStream, TokenStr
         }
     };
 
-    (macro_tk, implementation_tk, trait_tk)
+    GenOutput::new(macro_tk, implementation_tk, trait_tk)
 }
 
+/// Returns the body of the configuration index page.
 fn compute_index_string(fields: &Punctuated<Field, Comma>) -> String {
     let mut index = "Available configuration options:\n".to_string();
     fields.iter().for_each(|field| {
@@ -153,6 +173,7 @@ fn compute_index_string(fields: &Punctuated<Field, Comma>) -> String {
     index
 }
 
+/// Returns a string representation of a type.
 fn compute_type_string(ty: &Type) -> String {
     match ty {
         Type::Path(ref typepath) if typepath.qself.is_none() => typepath

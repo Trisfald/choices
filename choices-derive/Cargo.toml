@@ -15,6 +15,7 @@ syn = { version = "1", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
 proc-macro-error = "1"
+derive-new = "0.5"
 
 [lib]
 proc-macro = true
