@@ -44,3 +44,7 @@ You can see all configuration fields at `localhost:8081/config`
 and the individual fields' values at `localhost:8081/config/<field name>`.
 
 More examples in [examples](/examples).
+
+## Thanks
+
+Special thanks to the authors of `structops`. It served as an inspiration to learn procedural macros.

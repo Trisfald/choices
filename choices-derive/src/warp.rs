@@ -1,0 +1,140 @@
+//! Implementation of the configuration HTTP server built upon `warp`.
+
+use crate::attributes::Attributes;
+use crate::index::compute_index_string;
+use crate::{GenChoicesOutput, DEFAULT_ROOT_PATH};
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{punctuated::Punctuated, token::Comma, *};
+
+pub(crate) fn gen_choices(
+    fields: &Punctuated<Field, Comma>,
+    struct_attrs: &[Attribute],
+) -> GenChoicesOutput {
+    let attrs = Attributes::from_struct(struct_attrs);
+    let root_path = attrs.root_path.unwrap_or(quote! { #DEFAULT_ROOT_PATH });
+
+    let index_string = compute_index_string(fields);
+    let fields_resources = gen_fields_resources(fields, &root_path);
+    let fields_resources_mutable = gen_fields_resources_mutable(fields, &root_path);
+
+    let macros_tk = gen_macros(
+        &root_path,
+        &index_string,
+        &fields_resources,
+        &fields_resources_mutable,
+    );
+    let impl_tk = gen_impl();
+    let trait_tk = gen_trait();
+
+    GenChoicesOutput::new(macros_tk, impl_tk, trait_tk)
+}
+
+/// Generates the fields' HTTP resources, i.e. the GET methods to retrieve the value of
+/// fields from an immutable `self`.
+fn gen_fields_resources(
+    fields: &Punctuated<Field, Comma>,
+    root_path: &TokenStream,
+) -> Vec<Option<TokenStream>> {
+    fields.iter().map(|field| {
+        let field_ident = field
+            .ident
+            .as_ref()
+            .expect("unnamed fields are not supported!");
+        let field_name = field_ident.to_string();
+        Some(quote! {
+            warp::path!(#root_path / #field_name).map(move || format!("{}", $self.#field_ident.body_string()) )
+        })
+    }).collect()
+}
+
+/// Generates the mutable fields' HTTP resources, i.e. the GET methods to retrieve the value of
+/// fields from an Arc<Mutex<T>> and the PUT methods to modify such fields.
+fn gen_fields_resources_mutable(
+    fields: &Punctuated<Field, Comma>,
+    root_path: &TokenStream,
+) -> Vec<Option<TokenStream>> {
+    fields.iter().map(|field| {
+        let field_ident = field
+            .ident
+            .as_ref()
+            .expect("unnamed fields are not supported!");
+        let field_name = field_ident.to_string();
+        Some(quote! {{
+            let choices = $choices.clone();
+            warp::path!(#root_path / #field_name).map(move || format!("{}", choices.lock().unwrap().#field_ident.body_string()))
+        }})
+    }).collect()
+}
+
+/// Generates the macros used to build the warp filters.
+fn gen_macros(
+    root_path: &TokenStream,
+    index_string: &str,
+    fields_resources: &Vec<Option<TokenStream>>,
+    fields_resources_mutable: &Vec<Option<TokenStream>>,
+) -> TokenStream {
+    quote! {
+        macro_rules! create_filter {
+            ($self:ident) => {{
+                use warp::Filter;
+                #[allow(unused_imports)]
+                use choices::ChoicesOutput;
+
+                let index = warp::path(#root_path).map(|| #index_string);
+                warp::get().and(
+                    index.and(warp::path::end())
+                    #( .or(#fields_resources) )*
+                )
+            }};
+        }
+
+        macro_rules! create_filter_mutable {
+            ($choices:ident) => {{
+                use warp::Filter;
+                #[allow(unused_imports)]
+                use choices::ChoicesOutput;
+
+                let index = warp::path(#root_path).map(|| #index_string);
+                warp::get().and(
+                    index.and(warp::path::end())
+                    #( .or(#fields_resources_mutable) )*
+                )
+            }};
+        }
+    }
+}
+
+/// Generates the struct impl block.
+fn gen_impl() -> TokenStream {
+    quote! {
+        /// If you want more control over the http server instance you can use this
+        /// function to retrieve the configuration's `warp::Filter`.
+        fn filter(&'static self) -> warp::filters::BoxedFilter<(impl warp::Reply,)> {
+            use warp::Filter;
+            create_filter!(self).boxed()
+        }
+
+        /// If you want more control over the http server instance you can use this
+        /// function to retrieve the configuration's `warp::Filter`.
+        fn filter_mutable(choices: std::sync::Arc<std::sync::Mutex<Self>>) -> warp::filters::BoxedFilter<(impl warp::Reply,)> {
+            use warp::Filter;
+            create_filter_mutable!(choices).boxed()
+        }
+    }
+}
+
+/// Generates the Choices trait impl block.
+fn gen_trait() -> TokenStream {
+    quote! {
+        async fn run<T: Into<std::net::SocketAddr> + Send>(&'static self, addr: T) {
+            let filter = create_filter!(self);
+            warp::serve(filter).run(addr).await
+        }
+
+        async fn run_mutable<T: Into<std::net::SocketAddr> + Send>(choices: std::sync::Arc<std::sync::Mutex<Self>>, addr: T) {
+            let filter = create_filter_mutable!(choices);
+            warp::serve(filter).run(addr).await
+        }
+    }
+}

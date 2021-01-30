@@ -48,10 +48,26 @@ pub use serializer::ChoicesOutput;
 
 use async_trait::async_trait;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 
 /// A trait to manage the http server responsible for the configuration.
 #[async_trait]
 pub trait Choices {
     /// Starts the configuration http server on the chosen address.
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T);
+
+    #[doc(hidden)]
+    async fn run_mutable<T: Into<SocketAddr> + Send>(choices: Arc<Mutex<Self>>, addr: T);
+}
+
+#[async_trait]
+impl<C: Choices + Send> Choices for Arc<Mutex<C>> {
+    async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
+        <C as Choices>::run_mutable(self.clone(), addr).await;
+    }
+
+    #[doc(hidden)]
+    async fn run_mutable<T: Into<SocketAddr> + Send>(_: Arc<Mutex<Self>>, _: T) {
+        unimplemented!()
+    }
 }

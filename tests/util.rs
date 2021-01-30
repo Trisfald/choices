@@ -21,17 +21,36 @@ macro_rules! retry_await {
 
 /// Returns a port (u16) taken by reinterpreting the first two bytes
 /// of the source file's name and the line number.
+///
+/// This macro guarantees an unique port number as long as:
+/// - the file starts with two `a-Z` characters
+/// - no other file using the macro starts with the same two characters
+/// - no two macro usages in the same file occur in less than 6 lines
+/// - the macro is not used on line number > 599 *
+///
+/// (*) checked statically
 #[macro_export]
 macro_rules! file_line_port {
     () => {{
         let file = file!().as_bytes();
+        let chars_n: u16 = 25;
+        let ports_per_file: u16 = 100;
+        let ports_line_interval: u16 = 6;
+        let max_line_number = ports_per_file * ports_line_interval - 1;
+        let line = line!() as u16;
+        if line > max_line_number {
+            panic!(
+                "can't use file_line_port on line number > {}",
+                max_line_number
+            );
+        }
         // Skip reserved ports.
         1024 as u16 +
-                // There can be 25 different chars.
-                // Reserve 2500 for the second char * 100 slots per file.
-                (file[0] - 97) as u16 * 2500 as u16 +
-                // Divide line number by 10 and support 100 slots per files (thus max length 1000).
-                (file[1] - 97) as u16 * 100 as u16 + line!() as u16 / 10
+                                // There can be `chars_n` different chars.
+                                // Reserve ports for the second char * slots per file.
+                                (file[0] - 97) as u16 * chars_n * ports_per_file +
+                                // Divide line number by `ports_line_interval`.
+                                (file[1] - 97) as u16 * ports_per_file + line / ports_line_interval
     }};
 }
 
