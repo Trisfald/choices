@@ -19,38 +19,12 @@ macro_rules! retry_await {
     }};
 }
 
-/// Returns a port (u16) taken by reinterpreting the first two bytes
-/// of the source file's name and the line number.
-///
-/// This macro guarantees an unique port number as long as:
-/// - the file starts with two `a-Z` characters
-/// - no other file using the macro starts with the same two characters
-/// - no two macro usages in the same file occur in less than 6 lines
-/// - the macro is not used on line number > 599 *
-///
-/// (*) checked statically
+/// Returns a free tcp port.
 #[macro_export]
-macro_rules! file_line_port {
+macro_rules! get_free_port {
     () => {{
-        let file = file!().as_bytes();
-        let chars_n: u16 = 25;
-        let ports_per_file: u16 = 100;
-        let ports_line_interval: u16 = 6;
-        let max_line_number = ports_per_file * ports_line_interval - 1;
-        let line = line!() as u16;
-        if line > max_line_number {
-            panic!(
-                "can't use file_line_port on line number > {}",
-                max_line_number
-            );
-        }
-        // Skip reserved ports.
-        1024 as u16 +
-                                // There can be `chars_n` different chars.
-                                // Reserve ports for the second char * slots per file.
-                                (file[0] - 97) as u16 * chars_n * ports_per_file +
-                                // Divide line number by `ports_line_interval`.
-                                (file[1] - 97) as u16 * ports_per_file + line / ports_line_interval
+        let port: u16 = crate::util::portpicker::pick_unused_port().expect("no free port");
+        port
     }};
 }
 
@@ -77,4 +51,55 @@ macro_rules! check_get_field {
     ($port:expr, $name:expr, $expected:expr) => {
         check_get!($port, concat!("config/", stringify!($name)), $expected)
     };
+}
+
+pub mod portpicker {
+    // Code modified from the portpicker crate.
+    //
+    // Dropped the check for ipv6 and udp.
+
+    use rand::prelude::*;
+    use std::net::{Ipv4Addr, SocketAddrV4, TcpListener, ToSocketAddrs};
+
+    pub type Port = u16;
+
+    // Try to bind to a socket using TCP
+    pub fn test_bind_tcp<A: ToSocketAddrs>(addr: A) -> Option<Port> {
+        Some(TcpListener::bind(addr).ok()?.local_addr().ok()?.port())
+    }
+
+    /// Check if a port is free on TCP
+    pub fn is_free_tcp(port: Port) -> bool {
+        let ipv4 = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
+        test_bind_tcp(ipv4).is_some()
+    }
+
+    /// Asks the OS for a free port
+    pub fn ask_free_tcp_port() -> Option<Port> {
+        let ipv4 = SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0);
+        test_bind_tcp(ipv4)
+    }
+
+    /// Picks an available port that is available on TCP
+    pub fn pick_unused_port() -> Option<Port> {
+        let mut rng = rand::thread_rng();
+
+        // Try random port first
+        for _ in 0..10 {
+            let port = rng.gen_range(15000..25000);
+            if is_free_tcp(port) {
+                return Some(port);
+            }
+        }
+
+        // Ask the OS for a port
+        for _ in 0..10 {
+            if let Some(port) = ask_free_tcp_port() {
+                return Some(port);
+            }
+        }
+
+        // Give up
+        None
+    }
 }

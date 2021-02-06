@@ -29,26 +29,30 @@ where
 
 #[tokio::test]
 async fn get_all() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_all_impl(port, async move {
         let routes = Config { debug: true }
             .filter()
             .or(warp::path("hello").map(|| "Hello!"));
-        warp::serve(routes).run(([127, 0, 0, 1], port)).await
+        warp::serve(routes)
+            .run((std::net::Ipv4Addr::LOCALHOST, port))
+            .await
     })
     .await;
 }
 
 #[tokio::test]
 async fn get_all_mutable() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_all_impl(port, async move {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config { debug: true }));
         }
         let routes =
             Config::filter_mutable(CONFIG.clone()).or(warp::path("hello").map(|| "Hello!"));
-        warp::serve(routes).run(([127, 0, 0, 1], port)).await
+        warp::serve(routes)
+            .run((std::net::Ipv4Addr::LOCALHOST, port))
+            .await
     })
     .await;
 }

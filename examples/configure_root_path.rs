@@ -17,5 +17,5 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() {
-    CONFIG.run(([127, 0, 0, 1], 8081)).await;
+    CONFIG.run((std::net::Ipv4Addr::LOCALHOST, 8081)).await;
 }

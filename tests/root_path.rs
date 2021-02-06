@@ -28,21 +28,23 @@ where
 
 #[tokio::test]
 async fn get_field() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_field_impl(port, async move {
-        Config { debug: true }.run(([127, 0, 0, 1], port)).await
+        Config { debug: true }
+            .run((std::net::Ipv4Addr::LOCALHOST, port))
+            .await
     })
     .await;
 }
 
 #[tokio::test]
 async fn get_field_mutable() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_field_impl(port, async move {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config { debug: true }));
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }

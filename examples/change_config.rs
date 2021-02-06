@@ -1,6 +1,6 @@
 //! Customizing the configuration's root path.
 
-// Get the configuration at `curl localhost:8081/myconfig`
+// Get the configuration at `curl localhost:8081/config`
 
 use choices::Choices;
 use lazy_static::lazy_static;
@@ -8,13 +8,13 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Choices)]
 struct Config {
-    debug: bool,
+    port: u16,
     name: String,
 }
 
 lazy_static! {
     static ref CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config {
-        debug: false,
+        port: 10,
         name: String::from("service")
     }));
 }
@@ -22,12 +22,13 @@ lazy_static! {
 #[tokio::main]
 async fn main() {
     // Set a config field directly.
-    CONFIG.lock().unwrap().debug = true;
+    CONFIG.lock().unwrap().port = 100;
 
     // Set a config field through its setter.
-    // CONFIG.lock().unwrap().set_debug(true);
+    CONFIG.lock().unwrap().set_name("another service");
 
-    CONFIG.run(([127, 0, 0, 1], 8081)).await;
+    CONFIG.run((std::net::Ipv4Addr::LOCALHOST, 8081)).await;
 
-    // TODO
+    // To change port: curl -X PUT localhost:8081/config/port -d "42"
+    // To view the new value: curl localhost:8081/config/port
 }

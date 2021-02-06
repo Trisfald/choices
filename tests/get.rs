@@ -8,7 +8,9 @@ use tokio::runtime::Runtime;
 mod util;
 
 #[derive(Choices)]
-struct EmptyConfig {}
+struct SimpleConfig {
+    debug: bool,
+}
 
 async fn get_non_existing_field_impl<F>(port: u16, server_future: F)
 where
@@ -30,21 +32,24 @@ where
 
 #[tokio::test]
 async fn get_non_existing_field() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_non_existing_field_impl(port, async move {
-        EmptyConfig {}.run(([127, 0, 0, 1], port)).await
+        SimpleConfig { debug: true }
+            .run((std::net::Ipv4Addr::LOCALHOST, port))
+            .await
     })
     .await;
 }
 
 #[tokio::test]
 async fn get_non_existing_field_mutable() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_non_existing_field_impl(port, async move {
         lazy_static! {
-            static ref CONFIG: Arc<Mutex<EmptyConfig>> = Arc::new(Mutex::new(EmptyConfig {}));
+            static ref CONFIG: Arc<Mutex<SimpleConfig>> =
+                Arc::new(Mutex::new(SimpleConfig { debug: true }));
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }
@@ -122,24 +127,24 @@ where
 
 #[tokio::test]
 async fn get_scalar_type() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_scalar_type_impl(port, async move {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<ScalarConfig>> = Arc::new(Mutex::new(ScalarConfig::new()));
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }
 
 #[tokio::test]
 async fn get_scalar_type_mutable() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_scalar_type_impl(port, async move {
         lazy_static! {
             static ref CONFIG: ScalarConfig = ScalarConfig::new();
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }
@@ -164,7 +169,7 @@ where
 
 #[tokio::test]
 async fn get_string_field() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_string_field_impl(port, async move {
         lazy_static! {
             static ref CONFIG: StringConfig = {
@@ -173,14 +178,14 @@ async fn get_string_field() {
                 }
             };
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }
 
 #[tokio::test]
 async fn get_string_field_mutable() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_string_field_impl(port, async move {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<StringConfig>> = {
@@ -189,7 +194,7 @@ async fn get_string_field_mutable() {
                 }))
             };
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }
@@ -216,13 +221,13 @@ where
 
 #[tokio::test]
 async fn get_option_field() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_option_field_impl(port, async move {
         OptionConfig {
             character: Some('a'),
             empty: None,
         }
-        .run(([127, 0, 0, 1], port))
+        .run((std::net::Ipv4Addr::LOCALHOST, port))
         .await
     })
     .await;
@@ -230,7 +235,7 @@ async fn get_option_field() {
 
 #[tokio::test]
 async fn get_option_field_mutable() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_option_field_impl(port, async move {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<OptionConfig>> = {
@@ -240,7 +245,7 @@ async fn get_option_field_mutable() {
                 }))
             };
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }

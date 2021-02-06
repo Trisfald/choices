@@ -34,10 +34,10 @@ lazy_static! {
 async fn main() {
     // For immutable config call filter().
     let routes = CONFIG.filter().or(warp::path("hello").map(|| "Hello!"));
-    let future = warp::serve(routes).run(([127, 0, 0, 1], 8081));
+    let future = warp::serve(routes).run((std::net::Ipv4Addr::LOCALHOST, 8081));
     // For mutable config call filter_mutable().
     let routes2 = Config::filter_mutable(CONFIG2.clone()).or(warp::path("hello").map(|| "Hello!"));
-    let future2 = warp::serve(routes2).run(([127, 0, 0, 1], 8082));
+    let future2 = warp::serve(routes2).run((std::net::Ipv4Addr::LOCALHOST, 8082));
 
     tokio::join!(future, future2);
 }

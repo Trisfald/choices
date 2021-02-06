@@ -24,7 +24,7 @@ pub(crate) fn gen_choices(
         &fields_resources,
         &fields_resources_mutable,
     );
-    let impl_tk = gen_impl();
+    let impl_tk = gen_impl(fields);
     let trait_tk = gen_trait();
 
     GenChoicesOutput::new(macros_tk, impl_tk, trait_tk)
@@ -43,7 +43,7 @@ fn gen_fields_resources(
             .expect("unnamed fields are not supported!");
         let field_name = field_ident.to_string();
         Some(quote! {
-            warp::path!(#root_path / #field_name).map(move || format!("{}", $self.#field_ident.body_string()) )
+            warp::path!(#root_path / #field_name).and(warp::path::end()).map(move || format!("{}", $self.#field_ident.body_string()) )
         })
     }).collect()
 }
@@ -60,9 +60,29 @@ fn gen_fields_resources_mutable(
             .as_ref()
             .expect("unnamed fields are not supported!");
         let field_name = field_ident.to_string();
+        let setter_ident = quote::format_ident!("set_{}", field_ident);
+        let arg_type = &field.ty;
         Some(quote! {{
             let choices = $choices.clone();
-            warp::path!(#root_path / #field_name).map(move || format!("{}", choices.lock().unwrap().#field_ident.body_string()))
+            let get = warp::get()
+                .map(move || format!("{}", choices.lock().unwrap().#field_ident.body_string()));
+            let choices = $choices.clone();
+            let put = warp::put()
+                .and(warp::body::content_length_limit(1024 * 16))
+                .and(warp::body::bytes())
+                .map(move |bytes: bytes::Bytes| {
+                    let result: choices::ChoicesResult<#arg_type> = choices::ChoicesInput::from_chars(&bytes);
+                    match result {
+                        Ok(value) => {
+                            choices.lock().unwrap().#setter_ident(value);
+                            warp::reply::with_status("".to_string(), warp::http::StatusCode::OK)
+                        }
+                        Err(err) => {
+                            warp::reply::with_status(err.to_string(), warp::http::StatusCode::BAD_REQUEST)
+                        }
+                    }
+                });
+            warp::path!(#root_path / #field_name).and(warp::path::end()).and(get.or(put))
         }})
     }).collect()
 }
@@ -81,11 +101,8 @@ fn gen_macros(
                 #[allow(unused_imports)]
                 use choices::ChoicesOutput;
 
-                let index = warp::path(#root_path).map(|| #index_string);
-                warp::get().and(
-                    index.and(warp::path::end())
-                    #( .or(#fields_resources) )*
-                )
+                warp::path(#root_path).and(warp::path::end()).map(|| #index_string)
+                #( .or(#fields_resources) )*
             }};
         }
 
@@ -93,21 +110,22 @@ fn gen_macros(
             ($choices:ident) => {{
                 use warp::Filter;
                 #[allow(unused_imports)]
-                use choices::ChoicesOutput;
+                use choices::{ChoicesInput, ChoicesOutput};
 
-                let index = warp::path(#root_path).map(|| #index_string);
-                warp::get().and(
-                    index.and(warp::path::end())
-                    #( .or(#fields_resources_mutable) )*
-                )
+                warp::path(#root_path).and(warp::path::end()).map(|| #index_string)
+                #( .or(#fields_resources_mutable) )*
             }};
         }
     }
 }
 
 /// Generates the struct impl block.
-fn gen_impl() -> TokenStream {
+fn gen_impl(fields: &Punctuated<Field, Comma>) -> TokenStream {
+    let setters = gen_setters(fields);
+
     quote! {
+        #setters
+
         /// If you want more control over the http server instance you can use this
         /// function to retrieve the configuration's `warp::Filter`.
         fn filter(&'static self) -> warp::filters::BoxedFilter<(impl warp::Reply,)> {
@@ -121,6 +139,26 @@ fn gen_impl() -> TokenStream {
             use warp::Filter;
             create_filter_mutable!(choices).boxed()
         }
+    }
+}
+
+/// Generates the fields' setters.
+fn gen_setters(fields: &Punctuated<Field, Comma>) -> TokenStream {
+    let setters = fields.iter().map(|field| {
+        let field_ident = field
+            .ident
+            .as_ref()
+            .expect("unnamed fields are not supported!");
+        let setter_ident = quote::format_ident!("set_{}", field_ident);
+        let arg_type = &field.ty;
+        Some(quote! {
+            fn #setter_ident(&mut self, value: impl Into<#arg_type>) {
+                self.#field_ident = value.into();
+            }
+        })
+    });
+    quote! {
+        #( #setters )*
     }
 }
 

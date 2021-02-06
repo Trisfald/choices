@@ -34,7 +34,7 @@ where
 
 #[tokio::test]
 async fn get_list() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_list_impl(port, async move {
         Config {
             debug: true,
@@ -42,7 +42,7 @@ async fn get_list() {
             delay: 0.1,
             score: Some(3),
         }
-        .run(([127, 0, 0, 1], port))
+        .run((std::net::Ipv4Addr::LOCALHOST, port))
         .await
     })
     .await;
@@ -50,12 +50,12 @@ async fn get_list() {
 
 #[tokio::test]
 async fn get_list_mutable() {
-    let port = file_line_port!();
+    let port = get_free_port!();
     get_list_impl(port, async move {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config::default()));
         }
-        CONFIG.run(([127, 0, 0, 1], port)).await
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
 }

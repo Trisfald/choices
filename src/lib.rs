@@ -10,6 +10,7 @@
 //! ```no_run
 //! use choices::Choices;
 //! use lazy_static::lazy_static;
+//! use std::sync::{Arc, Mutex};
 //!
 //! #[derive(Choices)]
 //! struct Config {
@@ -19,23 +20,25 @@
 //! }
 //!
 //! lazy_static! {
-//!     static ref CONFIG: Config = {
-//!         Config {
+//!     static ref CONFIG: Arc<Mutex<Config>> = {
+//!         Arc::new(Mutex::new(Config {
 //!             debug: false,
 //!             id: Some(3),
 //!             log_file: "log.txt".to_string()
-//!         }
+//!         }))
 //!     };
 //! }
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     CONFIG.run(([127, 0, 0, 1], 8081)).await;
+//!     CONFIG.run((std::net::Ipv4Addr::LOCALHOST, 8081)).await;
 //! }
 //! ```
 //!
 //! You can see all configuration fields at `localhost:8081/config`
-//! and the individual fields' values at `localhost:8081/config/<field name>`.
+//! and the individual fields' values at `localhost:8081/config/<field name>`\
+//! A field's value can be changed with a `PUT`, for instance
+//! `curl -X PUT localhost:8081/config/debug -d "true"`.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -43,8 +46,11 @@
 #[doc(hidden)]
 pub use choices_derive::*;
 
-pub mod serializer;
-pub use serializer::ChoicesOutput;
+pub mod error;
+pub use crate::error::{ChoicesError, ChoicesResult};
+
+pub mod serde;
+pub use crate::serde::{ChoicesInput, ChoicesOutput};
 
 use async_trait::async_trait;
 use std::net::SocketAddr;
@@ -68,6 +74,6 @@ impl<C: Choices + Send> Choices for Arc<Mutex<C>> {
 
     #[doc(hidden)]
     async fn run_mutable<T: Into<SocketAddr> + Send>(_: Arc<Mutex<Self>>, _: T) {
-        unimplemented!()
+        panic!("do not call run_mutable() when T=Arc<Mutex>, use run() instead")
     }
 }
