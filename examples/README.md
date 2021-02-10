@@ -11,3 +11,11 @@ Run the configuration service on your own server instance.
 ### [Configure root path](configure_root_path.rs)
 
 Customizing the configuration root path.
+
+### [Change configuration](change_config.rs)
+
+Shows how to modify the configuration programmatically or through the API.
+
+### [User defined field type](user_type.rs) 
+
+Define your own configuration types.

@@ -19,19 +19,12 @@ macro_rules! retry_await {
     }};
 }
 
-/// Returns a port (u16) taken by reinterpreting the first two bytes
-/// of the source file's name and the line number.
+/// Returns a free tcp port.
 #[macro_export]
-macro_rules! file_line_port {
+macro_rules! get_free_port {
     () => {{
-        let file = file!().as_bytes();
-        // Skip reserved ports.
-        1024 as u16 +
-                // There can be 25 different chars.
-                // Reserve 2500 for the second char * 100 slots per file.
-                (file[0] - 97) as u16 * 2500 as u16 +
-                // Divide line number by 10 and support 100 slots per files (thus max length 1000).
-                (file[1] - 97) as u16 * 100 as u16 + line!() as u16 / 10
+        let port: u16 = crate::util::portpicker::pick_unused_port().expect("no free port");
+        port
     }};
 }
 
@@ -46,6 +39,10 @@ macro_rules! check_get {
         )))
         .unwrap();
         assert_eq!(response.status(), 200);
+        assert_eq!(
+            response.headers()[reqwest::header::CONTENT_TYPE],
+            "text/plain; charset=utf-8"
+        );
         let body = response.text().await.unwrap();
         assert_eq!(body, $expected);
     };
@@ -58,4 +55,55 @@ macro_rules! check_get_field {
     ($port:expr, $name:expr, $expected:expr) => {
         check_get!($port, concat!("config/", stringify!($name)), $expected)
     };
+}
+
+pub mod portpicker {
+    // Code modified from the portpicker crate.
+    //
+    // Dropped the check for ipv6 and udp.
+
+    use rand::prelude::*;
+    use std::net::{Ipv4Addr, SocketAddrV4, TcpListener, ToSocketAddrs};
+
+    pub type Port = u16;
+
+    // Try to bind to a socket using TCP
+    pub fn test_bind_tcp<A: ToSocketAddrs>(addr: A) -> Option<Port> {
+        Some(TcpListener::bind(addr).ok()?.local_addr().ok()?.port())
+    }
+
+    /// Check if a port is free on TCP
+    pub fn is_free_tcp(port: Port) -> bool {
+        let ipv4 = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
+        test_bind_tcp(ipv4).is_some()
+    }
+
+    /// Asks the OS for a free port
+    pub fn ask_free_tcp_port() -> Option<Port> {
+        let ipv4 = SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0);
+        test_bind_tcp(ipv4)
+    }
+
+    /// Picks an available port that is available on TCP
+    pub fn pick_unused_port() -> Option<Port> {
+        let mut rng = rand::thread_rng();
+
+        // Try random port first
+        for _ in 0..10 {
+            let port = rng.gen_range(15000..25000);
+            if is_free_tcp(port) {
+                return Some(port);
+            }
+        }
+
+        // Ask the OS for a port
+        for _ in 0..10 {
+            if let Some(port) = ask_free_tcp_port() {
+                return Some(port);
+            }
+        }
+
+        // Give up
+        None
+    }
 }

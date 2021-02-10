@@ -25,6 +25,6 @@ async fn main() {
         delay: 0.1,
         score: Some(3),
     }
-    .run(([127, 0, 0, 1], 8081))
+    .run((std::net::Ipv4Addr::LOCALHOST, 8081))
     .await;
 }
