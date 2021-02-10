@@ -26,6 +26,10 @@ where
     let response =
         retry_await!(reqwest::get(&format!("http://127.0.0.1:{}/config", port))).unwrap();
     assert_eq!(response.status(), 200);
+    assert_eq!(
+        response.headers()[reqwest::header::CONTENT_TYPE],
+        "text/plain; charset=utf-8"
+    );
     let body = response.text().await.unwrap();
     assert_eq!(body, "Available configuration options:\n  - debug: bool\n  - retries: u8\n  - delay: f64\n  - score: Option<i32>\n");
 

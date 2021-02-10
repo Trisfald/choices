@@ -39,8 +39,8 @@ impl ChoicesOutput for String {
 impl<T: Display> ChoicesOutput for Option<T> {
     fn body_string(&self) -> String {
         match self {
-            Some(v) => format!("Some({})", v),
-            None => "None".to_string(),
+            Some(v) => format!("{}", v),
+            None => "".to_string(),
         }
     }
 }
@@ -83,7 +83,7 @@ impl ChoicesInput<'_> for String {
 
 impl<'a, T: Display + ChoicesInput<'a>> ChoicesInput<'a> for Option<T> {
     fn from_chars(bytes: &'a Bytes) -> ChoicesResult<Self> {
-        if bytes.len() == 0 {
+        if bytes.is_empty() {
             Ok(None)
         } else {
             Ok(Some(T::from_chars(bytes)?))

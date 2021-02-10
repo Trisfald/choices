@@ -39,6 +39,10 @@ macro_rules! check_get {
         )))
         .unwrap();
         assert_eq!(response.status(), 200);
+        assert_eq!(
+            response.headers()[reqwest::header::CONTENT_TYPE],
+            "text/plain; charset=utf-8"
+        );
         let body = response.text().await.unwrap();
         assert_eq!(body, $expected);
     };

@@ -97,7 +97,7 @@ impl ScalarConfig {
     }
 }
 
-async fn get_scalar_type_impl<F>(port: u16, server_future: F)
+async fn get_scalar_field_impl<F>(port: u16, server_future: F)
 where
     F: Future + Send + 'static,
     F::Output: Send + 'static,
@@ -126,9 +126,9 @@ where
 }
 
 #[tokio::test]
-async fn get_scalar_type() {
+async fn get_scalar_field() {
     let port = get_free_port!();
-    get_scalar_type_impl(port, async move {
+    get_scalar_field_impl(port, async move {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<ScalarConfig>> = Arc::new(Mutex::new(ScalarConfig::new()));
         }
@@ -138,9 +138,9 @@ async fn get_scalar_type() {
 }
 
 #[tokio::test]
-async fn get_scalar_type_mutable() {
+async fn get_scalar_field_mutable() {
     let port = get_free_port!();
-    get_scalar_type_impl(port, async move {
+    get_scalar_field_impl(port, async move {
         lazy_static! {
             static ref CONFIG: ScalarConfig = ScalarConfig::new();
         }
@@ -213,8 +213,8 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    check_get_field!(port, character, "Some(a)");
-    check_get_field!(port, empty, "None");
+    check_get_field!(port, character, "a");
+    check_get_field!(port, empty, "");
 
     rt.shutdown_background();
 }
