@@ -59,6 +59,7 @@ Also check out the [documentation](/documentation.md).
 - [ ] JSON support
 - [ ] custom validators
 - [ ] on change callbacks
+- [ ] defaults from env
 
 ## Thanks
 

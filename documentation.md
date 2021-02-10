@@ -7,28 +7,28 @@
 # <a name="S-requests"></a>HTTP Requests
 
 ### **GET** `/config`
-#### **Status code**: `200`
-#### **Body**: List of all configuration fields
-#### **Example**: `curl localhost:8081/config/`
+**Status code**: `200`\
+**Body**: List of all configuration fields\
+**Example**: `curl localhost:8081/config/`
 
 <br />
 
 ### **GET** `/config/<configuration field>`
-#### **Status code**: `200` if the field exists, otherwise `404`
-#### **Body**: The value of the specified configuration field 
-#### **Example**: `curl localhost:8081/config/logfile`
+**Status code**: `200` if the field exists, otherwise `404`\
+**Body**: The value of the specified configuration field\
+**Example**: `curl localhost:8081/config/logfile`
 
 <br />
 
 ### **PUT** `/config/<configuration field> <new value>` 
-#### **Status code**: `200` if the new value has been set, `404` if the field doesn't exist or `400` if the new value is invalid
-#### **Body**: An error message if the new value is invalid
-#### **Example**: `curl -X PUT localhost:8081/config/filename -d "file.txt"`
+**Status code**: `200` if the new value has been set, `404` if the field doesn't exist or `400` if the new value is invalid\
+**Body**: An error message if the new value is invalid\
+**Example**: `curl -X PUT localhost:8081/config/filename -d "file.txt"`
 
 # <a name="S-types"></a>Supported configuration field types
 
-Type | Default (raw strings) | Json | Notes
----- | --------------------- | ---- | -----
+Type | Default | Json | Notes
+---- |:-------:|:----:| -----
 `bool` | :heavy_check_mark: | | 
 `char` | :heavy_check_mark: | | 
 `i128` | :heavy_check_mark: | | 
