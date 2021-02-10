@@ -2,6 +2,7 @@
 
 * [HTTP Requests](#S-requests)
 * [Supported configuration field types](#S-types)
+* [Macro attributes](#S-attributes)
 
 # <a name="S-requests"></a>HTTP Requests
 
@@ -46,3 +47,10 @@ Type | Default (raw strings) | Json | Notes
 `f64` | :heavy_check_mark: | | 
 `String` | :heavy_check_mark: | | 
 `Option<T>` | :heavy_check_mark: | | `T` must be supported 
+user defined | :heavy_check_mark: | | user must implement the traits `ChoicesInput` and `ChoicesOutput` 
+
+# <a name="S-attributes"></a>Macro attributes
+
+Attribute name | Position | Effect
+-------------- | -------- | ------
+path | `struct` | sets the root path of the configuration HTTP service

@@ -55,6 +55,7 @@ Also check out the [documentation](/documentation.md).
 - [x] show all configuration fields
 - [x] GET configuration field
 - [x] PUT configuration field
+- [x] user defined types
 - [ ] JSON support
 - [ ] custom validators
 - [ ] on change callbacks
