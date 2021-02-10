@@ -12,8 +12,8 @@ pub(crate) fn compute_type_string(ty: &Type) -> String {
             .fold(String::new(), |mut acc, v| {
                 acc.push_str(&v.ident.to_string());
                 if let PathArguments::AngleBracketed(ref arguments) = &v.arguments {
-                    if arguments.args.len() >= 1 {
-                        acc.push_str("<");
+                    if !arguments.args.is_empty() {
+                        acc.push('<');
                         for (i, arg) in arguments.args.iter().enumerate() {
                             if let GenericArgument::Type(inner_type) = arg {
                                 if i != 0 {
@@ -26,7 +26,7 @@ pub(crate) fn compute_type_string(ty: &Type) -> String {
                                 )
                             }
                         }
-                        acc.push_str(">");
+                        acc.push('>');
                     }
                 }
                 acc

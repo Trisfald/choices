@@ -91,8 +91,8 @@ fn gen_fields_resources_mutable(
 fn gen_macros(
     root_path: &TokenStream,
     index_string: &str,
-    fields_resources: &Vec<Option<TokenStream>>,
-    fields_resources_mutable: &Vec<Option<TokenStream>>,
+    fields_resources: &[Option<TokenStream>],
+    fields_resources_mutable: &[Option<TokenStream>],
 ) -> TokenStream {
     quote! {
         macro_rules! create_filter {
