@@ -6,7 +6,7 @@ description = "HTTP configuration service by defining a struct, derive crate."
 documentation = "https://docs.rs/choices-derive"
 repository = "https://github.com/trisfald/choices"
 keywords = ["configuration", "derive", "http"]
-categories = ["configuration", "web-programming"]
+categories = ["web-programming"]
 edition = "2018"
 license = "MIT"
 
