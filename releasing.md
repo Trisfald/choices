@@ -7,5 +7,4 @@
 - Check the build
 - Push `choices-derive` to crates.io
 - Push `choices` to crates.io
-- Tag
 - Publish release on github
