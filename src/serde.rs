@@ -1,7 +1,7 @@
 //! Serializes and deserializes fields' value.
 
+use crate::bytes::Bytes;
 use crate::ChoicesResult;
-use bytes::Bytes;
 use std::fmt::Display;
 use std::str;
 
@@ -94,7 +94,7 @@ impl<'a, T: Display + ChoicesInput<'a>> ChoicesInput<'a> for Option<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bytes::{BufMut, BytesMut};
+    use crate::bytes::{BufMut, BytesMut};
 
     #[test]
     fn generic_number_from_chars() {

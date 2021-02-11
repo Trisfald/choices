@@ -46,18 +46,32 @@
 #[doc(hidden)]
 pub use choices_derive::*;
 
+#[doc(hidden)]
+pub mod bytes {
+    #[doc(hidden)]
+    pub use bytes::*;
+}
+
+#[doc(hidden)]
+pub mod warp {
+    #[doc(hidden)]
+    pub use warp::*;
+}
+
+#[doc(hidden)]
+pub use async_trait::*;
+
 pub mod error;
 pub use crate::error::{ChoicesError, ChoicesResult};
 
 pub mod serde;
 pub use crate::serde::{ChoicesInput, ChoicesOutput};
 
-use async_trait::async_trait;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
 /// A trait to manage the http server responsible for the configuration.
-#[async_trait]
+#[self::async_trait]
 pub trait Choices {
     /// Starts the configuration http server on the chosen address.
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T);
@@ -66,7 +80,7 @@ pub trait Choices {
     async fn run_mutable<T: Into<SocketAddr> + Send>(choices: Arc<Mutex<Self>>, addr: T);
 }
 
-#[async_trait]
+#[self::async_trait]
 impl<C: Choices + Send> Choices for Arc<Mutex<C>> {
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
         <C as Choices>::run_mutable(self.clone(), addr).await;

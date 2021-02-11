@@ -1,4 +1,4 @@
-use bytes::Bytes;
+use choices::bytes::Bytes;
 use choices::{Choices, ChoicesInput, ChoicesOutput, ChoicesResult};
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};

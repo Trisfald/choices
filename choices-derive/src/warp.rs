@@ -43,7 +43,7 @@ fn gen_fields_resources(
             .expect("unnamed fields are not supported!");
         let field_name = field_ident.to_string();
         Some(quote! {
-            warp::path!(#root_path / #field_name).and(warp::path::end()).map(move || format!("{}", $self.#field_ident.body_string()) )
+            choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).map(move || format!("{}", $self.#field_ident.body_string()) )
         })
     }).collect()
 }
@@ -64,25 +64,25 @@ fn gen_fields_resources_mutable(
         let arg_type = &field.ty;
         Some(quote! {{
             let choices = $choices.clone();
-            let get = warp::get()
+            let get = choices::warp::get()
                 .map(move || format!("{}", choices.lock().unwrap().#field_ident.body_string()));
             let choices = $choices.clone();
-            let put = warp::put()
-                .and(warp::body::content_length_limit(1024 * 16))
-                .and(warp::body::bytes())
-                .map(move |bytes: bytes::Bytes| {
+            let put = choices::warp::put()
+                .and(choices::warp::body::content_length_limit(1024 * 16))
+                .and(choices::warp::body::bytes())
+                .map(move |bytes: choices::bytes::Bytes| {
                     let result: choices::ChoicesResult<#arg_type> = choices::ChoicesInput::from_chars(&bytes);
                     match result {
                         Ok(value) => {
                             choices.lock().unwrap().#setter_ident(value);
-                            warp::reply::with_status("".to_string(), warp::http::StatusCode::OK)
+                            choices::warp::reply::with_status("".to_string(), choices::warp::http::StatusCode::OK)
                         }
                         Err(err) => {
-                            warp::reply::with_status(err.to_string(), warp::http::StatusCode::BAD_REQUEST)
+                            choices::warp::reply::with_status(err.to_string(), choices::warp::http::StatusCode::BAD_REQUEST)
                         }
                     }
                 });
-            warp::path!(#root_path / #field_name).and(warp::path::end()).and(get.or(put))
+                choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).and(get.or(put))
         }})
     }).collect()
 }
@@ -97,22 +97,22 @@ fn gen_macros(
     quote! {
         macro_rules! create_filter {
             ($self:ident) => {{
-                use warp::Filter;
+                use choices::warp::Filter;
                 #[allow(unused_imports)]
                 use choices::ChoicesOutput;
 
-                warp::path(#root_path).and(warp::path::end()).map(|| #index_string)
+                choices::warp::path(#root_path).and(choices::warp::path::end()).map(|| #index_string)
                 #( .or(#fields_resources) )*
             }};
         }
 
         macro_rules! create_filter_mutable {
             ($choices:ident) => {{
-                use warp::Filter;
+                use choices::warp::Filter;
                 #[allow(unused_imports)]
                 use choices::{ChoicesInput, ChoicesOutput};
 
-                warp::path(#root_path).and(warp::path::end()).map(|| #index_string)
+                choices::warp::path(#root_path).and(choices::warp::path::end()).map(|| #index_string)
                 #( .or(#fields_resources_mutable) )*
             }};
         }
@@ -128,15 +128,15 @@ fn gen_impl(fields: &Punctuated<Field, Comma>) -> TokenStream {
 
         /// If you want more control over the http server instance you can use this
         /// function to retrieve the configuration's `warp::Filter`.
-        fn filter(&'static self) -> warp::filters::BoxedFilter<(impl warp::Reply,)> {
-            use warp::Filter;
+        fn filter(&'static self) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
+            use choices::warp::Filter;
             create_filter!(self).boxed()
         }
 
         /// If you want more control over the http server instance you can use this
         /// function to retrieve the configuration's `warp::Filter`.
-        fn filter_mutable(choices: std::sync::Arc<std::sync::Mutex<Self>>) -> warp::filters::BoxedFilter<(impl warp::Reply,)> {
-            use warp::Filter;
+        fn filter_mutable(choices: std::sync::Arc<std::sync::Mutex<Self>>) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
+            use choices::warp::Filter;
             create_filter_mutable!(choices).boxed()
         }
     }
@@ -167,12 +167,12 @@ fn gen_trait() -> TokenStream {
     quote! {
         async fn run<T: Into<std::net::SocketAddr> + Send>(&'static self, addr: T) {
             let filter = create_filter!(self);
-            warp::serve(filter).run(addr).await
+            choices::warp::serve(filter).run(addr).await
         }
 
         async fn run_mutable<T: Into<std::net::SocketAddr> + Send>(choices: std::sync::Arc<std::sync::Mutex<Self>>, addr: T) {
             let filter = create_filter_mutable!(choices);
-            warp::serve(filter).run(addr).await
+            choices::warp::serve(filter).run(addr).await
         }
     }
 }

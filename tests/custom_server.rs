@@ -1,9 +1,9 @@
+use choices::warp::Filter;
 use choices::Choices;
 use lazy_static::lazy_static;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-use warp::Filter;
 
 #[macro_use]
 mod util;
@@ -33,8 +33,8 @@ async fn get_all() {
     get_all_impl(port, async move {
         let routes = Config { debug: true }
             .filter()
-            .or(warp::path("hello").map(|| "Hello!"));
-        warp::serve(routes)
+            .or(choices::warp::path("hello").map(|| "Hello!"));
+        choices::warp::serve(routes)
             .run((std::net::Ipv4Addr::LOCALHOST, port))
             .await
     })
@@ -48,9 +48,9 @@ async fn get_all_mutable() {
         lazy_static! {
             static ref CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config { debug: true }));
         }
-        let routes =
-            Config::filter_mutable(CONFIG.clone()).or(warp::path("hello").map(|| "Hello!"));
-        warp::serve(routes)
+        let routes = Config::filter_mutable(CONFIG.clone())
+            .or(choices::warp::path("hello").map(|| "Hello!"));
+        choices::warp::serve(routes)
             .run((std::net::Ipv4Addr::LOCALHOST, port))
             .await
     })

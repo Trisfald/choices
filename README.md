@@ -1,6 +1,9 @@
 # `choices`
 
 [![works badge](https://cdn.jsdelivr.net/gh/nikku/works-on-my-machine@v0.2.0/badge.svg)](https://github.com/nikku/works-on-my-machine)
+[![crates.io](https://meritbadge.herokuapp.com/choices)](https://crates.io/crates/choices)
+[![Released API docs](https://docs.rs/choices/badge.svg)](https://docs.rs/choices)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Do you like `structops` and `clap`? 
 Do you write `microservices`?

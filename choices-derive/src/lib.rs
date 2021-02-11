@@ -41,7 +41,7 @@ fn impl_choices(input: &DeriveInput) -> TokenStream {
     let struct_name = &input.ident;
 
     set_dummy(quote! {
-        #[async_trait::async_trait]
+        #[choices::async_trait]
         impl ::choices::Choices for #struct_name {
             unimplemented!();
         }
@@ -102,7 +102,7 @@ fn impl_choices_for_struct(
         )]
         #[deny(clippy::correctness)]
         #[allow(dead_code, unreachable_code)]
-        #[async_trait::async_trait]
+        #[choices::async_trait]
         impl ::choices::Choices for #name {
             #trait_block
         }

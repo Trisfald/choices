@@ -7,10 +7,10 @@
 // `curl localhost:8082/config/user`
 // `curl localhost:8082/hello`
 
+use choices::warp::Filter;
 use choices::Choices;
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
-use warp::Filter;
 
 #[derive(Choices)]
 struct Config {
@@ -33,11 +33,14 @@ lazy_static! {
 #[tokio::main]
 async fn main() {
     // For immutable config call filter().
-    let routes = CONFIG.filter().or(warp::path("hello").map(|| "Hello!"));
-    let future = warp::serve(routes).run((std::net::Ipv4Addr::LOCALHOST, 8081));
+    let routes = CONFIG
+        .filter()
+        .or(choices::warp::path("hello").map(|| "Hello!"));
+    let future = choices::warp::serve(routes).run((std::net::Ipv4Addr::LOCALHOST, 8081));
     // For mutable config call filter_mutable().
-    let routes2 = Config::filter_mutable(CONFIG2.clone()).or(warp::path("hello").map(|| "Hello!"));
-    let future2 = warp::serve(routes2).run((std::net::Ipv4Addr::LOCALHOST, 8082));
+    let routes2 =
+        Config::filter_mutable(CONFIG2.clone()).or(choices::warp::path("hello").map(|| "Hello!"));
+    let future2 = choices::warp::serve(routes2).run((std::net::Ipv4Addr::LOCALHOST, 8082));
 
     tokio::join!(future, future2);
 }
