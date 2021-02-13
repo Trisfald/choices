@@ -1,7 +1,7 @@
 //! Implementation of the configuration HTTP server built upon `warp`.
 
 use crate::attributes::Attributes;
-use crate::index::compute_index_string;
+use crate::index::{compute_index, IndexData};
 use crate::{GenChoicesOutput, DEFAULT_ROOT_PATH};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -14,13 +14,13 @@ pub(crate) fn gen_choices(
     let attrs = Attributes::from_struct(struct_attrs);
     let root_path = attrs.root_path.unwrap_or(quote! { #DEFAULT_ROOT_PATH });
 
-    let index_string = compute_index_string(fields);
+    let index_data = compute_index(fields, attrs.json);
     let fields_resources = gen_fields_resources(fields, &root_path);
     let fields_resources_mutable = gen_fields_resources_mutable(fields, &root_path);
 
     let macros_tk = gen_macros(
         &root_path,
-        &index_string,
+        index_data,
         &fields_resources,
         &fields_resources_mutable,
     );
@@ -90,10 +90,14 @@ fn gen_fields_resources_mutable(
 /// Generates the macros used to build the warp filters.
 fn gen_macros(
     root_path: &TokenStream,
-    index_string: &str,
+    index_data: IndexData,
     fields_resources: &[Option<TokenStream>],
     fields_resources_mutable: &[Option<TokenStream>],
 ) -> TokenStream {
+    let content_type_header = crate::constants::CONTENT_TYPE_HEADER;
+    let index_body = index_data.body;
+    let index_content_type = index_data.content_type;
+
     quote! {
         macro_rules! create_filter {
             ($self:ident) => {{
@@ -101,7 +105,12 @@ fn gen_macros(
                 #[allow(unused_imports)]
                 use choices::ChoicesOutput;
 
-                choices::warp::path(#root_path).and(choices::warp::path::end()).map(|| #index_string)
+                choices::warp::path(#root_path)
+                    .and(choices::warp::path::end())
+                    .map(choices::warp::reply)
+                    .map(|reply| {
+                        choices::warp::reply::with_header(#index_body, #content_type_header, #index_content_type)
+                    })
                 #( .or(#fields_resources) )*
             }};
         }
@@ -112,7 +121,12 @@ fn gen_macros(
                 #[allow(unused_imports)]
                 use choices::{ChoicesInput, ChoicesOutput};
 
-                choices::warp::path(#root_path).and(choices::warp::path::end()).map(|| #index_string)
+                choices::warp::path(#root_path)
+                    .and(choices::warp::path::end())
+                    .map(choices::warp::reply)
+                    .map(|reply| {
+                        choices::warp::reply::with_header(#index_body, #content_type_header, #index_content_type)
+                    })
                 #( .or(#fields_resources_mutable) )*
             }};
         }

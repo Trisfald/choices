@@ -27,8 +27,8 @@
 
 # <a name="S-types"></a>Supported configuration field types
 
-Type | Default | Json | Notes
----- |:-------:|:----:| -----
+Type | Text | Json | Notes
+---- |:----:|:----:| -----
 `bool` | :heavy_check_mark: | | 
 `char` | :heavy_check_mark: | | 
 `i128` | :heavy_check_mark: | | 
@@ -51,6 +51,7 @@ user defined | :heavy_check_mark: | | user must implement the traits `ChoicesInp
 
 # <a name="S-attributes"></a>Macro attributes
 
-Attribute name | Position | Effect
--------------- | -------- | ------
-path | `struct` | sets the root path of the configuration HTTP service
+Attribute name | Value | Position | Effect
+-------------- | ----- | -------- | ------
+path | `String` | `struct` | sets the root path of the configuration HTTP service
+json | | `struct` | requests and responses content is in json

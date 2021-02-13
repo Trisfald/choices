@@ -2,9 +2,7 @@ use choices::Choices;
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-
-#[macro_use]
-mod util;
+use util::*;
 
 /// Performs a PUT for the field `name` on a server running on localhost on port
 /// `port` and checks the response's status code. Then, it performs a GET to

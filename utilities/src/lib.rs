@@ -23,7 +23,7 @@ macro_rules! retry_await {
 #[macro_export]
 macro_rules! get_free_port {
     () => {{
-        let port: u16 = crate::util::portpicker::pick_unused_port().expect("no free port");
+        let port: u16 = util::portpicker::pick_unused_port().expect("no free port");
         port
     }};
 }

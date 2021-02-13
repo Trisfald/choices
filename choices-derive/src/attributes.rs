@@ -12,6 +12,8 @@ use syn::{
 
 /// All types of attribute available in choices.
 pub(crate) enum ChoicesAttribute {
+    // single-identifier attributes
+    Json(Ident),
     // ident = "string literal"
     RootPath(Ident, LitStr),
 }
@@ -55,7 +57,10 @@ impl Parse for ChoicesAttribute {
             abort!(name, "unexpected attribute: {}", name_str);
         } else {
             // Attributes represented with a sole identifier.
-            abort!(name, "unexpected attribute: {}", name_str);
+            match name_str.as_ref() {
+                "json" => Ok(Json(name)),
+                _ => abort!(name, "unexpected attribute: {}", name_str),
+            }
         }
     }
 }
@@ -73,11 +78,15 @@ fn parse_choices_attributes(attrs: &[Attribute]) -> Vec<ChoicesAttribute> {
 
 pub(crate) struct Attributes {
     pub(crate) root_path: Option<TokenStream>,
+    pub(crate) json: bool,
 }
 
 impl Attributes {
     fn new() -> Self {
-        Self { root_path: None }
+        Self {
+            root_path: None,
+            json: false,
+        }
     }
 
     fn push_attrs(&mut self, attrs: &[Attribute]) {
@@ -85,6 +94,9 @@ impl Attributes {
 
         for attr in parse_choices_attributes(attrs) {
             match attr {
+                Json(_) => {
+                    self.json = true;
+                }
                 RootPath(_, path) => {
                     self.root_path = Some(quote!(#path));
                 }

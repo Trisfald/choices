@@ -3,9 +3,7 @@ use choices::{Choices, ChoicesInput, ChoicesOutput, ChoicesResult};
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-
-#[macro_use]
-mod util;
+use util::*;
 
 #[derive(Default)]
 struct UserType<T: Default, U: Default> {

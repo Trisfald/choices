@@ -10,12 +10,18 @@ categories = ["web-programming"]
 edition = "2018"
 license = "MIT"
 
+[features]
+default = []
+json = ["serde", "serde_json"]
+
 [dependencies]
 syn = { version = "1", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
 proc-macro-error = "1"
 derive-new = "0.5"
+serde = { version = "1.0", optional = true, features = ["derive"] }
+serde_json = { version = "1.0", optional = true }
 
 [lib]
 proc-macro = true

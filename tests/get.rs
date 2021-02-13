@@ -3,9 +3,7 @@ use lazy_static::lazy_static;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-
-#[macro_use]
-mod util;
+use util::*;
 
 #[derive(Choices)]
 struct SimpleConfig {
