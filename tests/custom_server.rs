@@ -1,17 +1,9 @@
 use choices::warp::Filter;
-use choices::Choices;
 use lazy_static::lazy_static;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-
-#[macro_use]
-mod util;
-
-#[derive(Choices)]
-struct Config {
-    debug: bool,
-}
+use util::*;
 
 async fn get_all_impl<F>(port: u16, server_future: F)
 where
@@ -21,8 +13,8 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    check_get!(port, "config/debug", "true");
-    check_get!(port, "hello", "Hello!");
+    check_get_text!(port, "config/debug", "true");
+    check_get_text!(port, "hello", "Hello!");
 
     rt.shutdown_background();
 }
@@ -31,7 +23,7 @@ where
 async fn get_all() {
     let port = get_free_port!();
     get_all_impl(port, async move {
-        let routes = Config { debug: true }
+        let routes = text::SimpleBoolConfig { debug: true }
             .filter()
             .or(choices::warp::path("hello").map(|| "Hello!"));
         choices::warp::serve(routes)
@@ -46,9 +38,10 @@ async fn get_all_mutable() {
     let port = get_free_port!();
     get_all_impl(port, async move {
         lazy_static! {
-            static ref CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config { debug: true }));
+            static ref CONFIG: Arc<Mutex<text::SimpleBoolConfig>> =
+                Arc::new(Mutex::new(text::SimpleBoolConfig { debug: true }));
         }
-        let routes = Config::filter_mutable(CONFIG.clone())
+        let routes = text::SimpleBoolConfig::filter_mutable(CONFIG.clone())
             .or(choices::warp::path("hello").map(|| "Hello!"));
         choices::warp::serve(routes)
             .run((std::net::Ipv4Addr::LOCALHOST, port))

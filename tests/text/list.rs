@@ -3,9 +3,7 @@ use lazy_static::lazy_static;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-
-#[macro_use]
-mod util;
+use util::*;
 
 #[derive(Choices, Default)]
 struct Config {
@@ -31,7 +29,11 @@ where
         "text/plain; charset=utf-8"
     );
     let body = response.text().await.unwrap();
-    assert_eq!(body, "Available configuration options:\n  - debug: bool\n  - retries: u8\n  - delay: f64\n  - score: Option<i32>\n");
+    assert_eq!(
+        body,
+        "Available configuration options:\n  - debug: bool\n  \
+        - retries: u8\n  - delay: f64\n  - score: Option<i32>\n"
+    );
 
     rt.shutdown_background();
 }

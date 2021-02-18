@@ -19,3 +19,11 @@ Shows how to modify the configuration programmatically or through the API.
 ### [User defined field type](user_type.rs) 
 
 Define your own configuration types.
+
+### [User defined field type (json)](user_type_json.rs) 
+
+Define your own configuration types (json version).
+
+### [Json](json.rs)
+
+Using json to represent the configuration's values.

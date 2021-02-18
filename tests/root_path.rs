@@ -3,9 +3,7 @@ use lazy_static::lazy_static;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-
-#[macro_use]
-mod util;
+use util::*;
 
 #[derive(Choices)]
 #[choices(path = "myconfig")]
@@ -21,7 +19,7 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    check_get!(port, "myconfig/debug", "true");
+    check_get_text!(port, "myconfig/debug", "true");
 
     rt.shutdown_background();
 }

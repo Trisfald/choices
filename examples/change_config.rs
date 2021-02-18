@@ -1,6 +1,6 @@
 //! Customizing the configuration's root path.
 
-// Get the configuration at `curl localhost:8081/config`
+// Get the configuration's index at `curl localhost:8081/config`
 
 use choices::Choices;
 use lazy_static::lazy_static;

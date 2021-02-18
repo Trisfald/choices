@@ -2,7 +2,6 @@ name: Rust
 
 on:
   push:
-    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -37,14 +36,13 @@ jobs:
           command: clippy
           args: --tests --all-targets --all-features -- -D warnings
 
-      - name: Run cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all-targets --all-features       
-
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features       
+
+      - name: Run cargo test (json)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --features "json"             

@@ -1,31 +1,19 @@
-use choices::bytes::Bytes;
-use choices::{Choices, ChoicesInput, ChoicesOutput, ChoicesResult};
+use choices::Choices;
 use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
+use util::*;
 
-#[macro_use]
-mod util;
-
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 struct UserType<T: Default, U: Default> {
     _t: T,
     _u: U,
 }
 
-impl<T: Default, U: Default> ChoicesInput<'_> for UserType<T, U> {
-    fn from_chars(_: &Bytes) -> ChoicesResult<Self> {
-        Ok(Self::default())
-    }
-}
-
-impl<T: Default, U: Default> ChoicesOutput for UserType<T, U> {
-    fn body_string(&self) -> String {
-        "ok".to_string()
-    }
-}
-
 #[derive(Choices, Default)]
+#[choices(json)]
 struct Config {
     field: UserType<u8, u8>,
 }
@@ -48,10 +36,14 @@ async fn user_type() {
     let body = response.text().await.unwrap();
     assert_eq!(
         body,
-        "Available configuration options:\n  - field: UserType<u8, u8>\n"
+        json!([{
+            "name": "field",
+            "type": "UserType<u8, u8>",
+        }])
+        .to_string()
     );
 
-    check_get_field!(port, field, "ok");
+    check_get_field_json!(port, field, json!({"_t": 0, "_u": 0}).to_string());
 
     rt.shutdown_background();
 }

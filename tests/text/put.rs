@@ -2,9 +2,8 @@ use choices::Choices;
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
-
-#[macro_use]
-mod util;
+use util::text::*;
+use util::*;
 
 /// Performs a PUT for the field `name` on a server running on localhost on port
 /// `port` and checks the response's status code. Then, it performs a GET to
@@ -24,7 +23,7 @@ macro_rules! check_put_field {
             .send())
         .unwrap();
         assert_eq!(response.status(), $status);
-        check_get_field!($port, $name, $expected);
+        check_get_field_text!($port, $name, $expected);
     };
 }
 
@@ -55,26 +54,6 @@ async fn put_non_existing_field() {
     assert_eq!(response.status(), 404);
 
     rt.shutdown_background();
-}
-
-#[derive(Choices, Default)]
-struct ScalarConfig {
-    b: bool,
-    c: char,
-    int128: i128,
-    int16: i16,
-    int32: i32,
-    int64: i64,
-    int8: i8,
-    intsize: isize,
-    uint128: u128,
-    uint16: u16,
-    uint32: u32,
-    uint64: u64,
-    uint8: u8,
-    uintsize: usize,
-    float: f32,
-    double: f64,
 }
 
 #[tokio::test]
@@ -123,11 +102,6 @@ async fn put_scalar_field() {
     rt.shutdown_background();
 }
 
-#[derive(Choices, Default)]
-struct StringConfig {
-    string: String,
-}
-
 #[tokio::test]
 async fn put_string_field() {
     let port = get_free_port!();
@@ -145,12 +119,6 @@ async fn put_string_field() {
     check_put_field!(port, string, "", 200, "", ("Content-Length", "0"));
 
     rt.shutdown_background();
-}
-
-#[derive(Choices, Default)]
-struct OptionConfig {
-    character: Option<char>,
-    empty: Option<bool>,
 }
 
 #[tokio::test]
