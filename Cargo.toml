@@ -18,7 +18,7 @@ include = [
 
 [features]
 default = []
-json = ["serde", "serde_json", "choices-derive/json"]
+json = ["serde_json", "choices-derive/json"]
 
 [dependencies]
 choices-derive = { path = "choices-derive", version = "=0.1.1" }
@@ -26,16 +26,20 @@ async-trait = "0.1"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 warp = "0.3"
 bytes = "1.0"
-serde = { version = "1.0", optional = true, features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
 util = { path = "utilities" }
 lazy_static = "1.4"
 reqwest = "0.11"
+serde = { version = "1.0", features = ["derive"] }
 
 [[example]]
 name = "json"
+required-features = ["json"]
+
+[[example]]
+name = "user_type_json"
 required-features = ["json"]
 
 [[test]]

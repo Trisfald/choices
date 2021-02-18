@@ -39,6 +39,12 @@
 //! and the individual fields' values at `localhost:8081/config/<field name>`\
 //! A field's value can be changed with a `PUT`, for instance
 //! `curl -X PUT localhost:8081/config/debug -d "true"`.
+//!
+//! More examples on [github](https://github.com/Trisfald/choices/blob/master/examples/).
+//!
+//! ## Documentation
+//! Check out the documentation on
+//! [github](https://github.com/Trisfald/choices/blob/master/documentation.md).
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -46,16 +52,20 @@
 #[doc(hidden)]
 pub use choices_derive::*;
 
-#[doc(hidden)]
+/// Re-export of `bytes`
 pub mod bytes {
-    #[doc(hidden)]
     pub use bytes::*;
 }
 
-#[doc(hidden)]
+/// Re-export of `warp`
 pub mod warp {
-    #[doc(hidden)]
     pub use warp::*;
+}
+
+#[cfg(feature = "json")]
+/// Re-export of `serde_json`
+pub mod serde_json {
+    pub use serde_json::*;
 }
 
 #[doc(hidden)]

@@ -29,25 +29,26 @@
 
 Type | Text | Json | Notes
 ---- |:----:|:----:| -----
-`bool` | :heavy_check_mark: | | 
-`char` | :heavy_check_mark: | | 
-`i128` | :heavy_check_mark: | | 
-`i16` | :heavy_check_mark: | | 
-`i32` | :heavy_check_mark: | | 
-`i64` | :heavy_check_mark: | | 
-`i8` | :heavy_check_mark: | | 
-`isize` | :heavy_check_mark: | | 
-`u128` | :heavy_check_mark: | | 
-`u16` | :heavy_check_mark: | | 
-`u32` | :heavy_check_mark: | | 
-`u64` | :heavy_check_mark: | | 
-`u8` | :heavy_check_mark: | | 
-`usize` | :heavy_check_mark: | | 
-`f32` | :heavy_check_mark: | | 
-`f64` | :heavy_check_mark: | | 
-`String` | :heavy_check_mark: | | 
-`Option<T>` | :heavy_check_mark: | | `T` must be supported 
-user defined | :heavy_check_mark: | | user must implement the traits `ChoicesInput` and `ChoicesOutput` 
+`bool` | :heavy_check_mark: | :heavy_check_mark: | 
+`char` | :heavy_check_mark: | :heavy_check_mark: | 
+`i128` | :heavy_check_mark: | :heavy_check_mark: | 
+`i16` | :heavy_check_mark: | :heavy_check_mark: | 
+`i32` | :heavy_check_mark: | :heavy_check_mark: | 
+`i64` | :heavy_check_mark: | :heavy_check_mark: | 
+`i8` | :heavy_check_mark: | :heavy_check_mark: | 
+`isize` | :heavy_check_mark: | :heavy_check_mark: | 
+`u128` | :heavy_check_mark: | :heavy_check_mark: | 
+`u16` | :heavy_check_mark: | :heavy_check_mark: | 
+`u32` | :heavy_check_mark: | :heavy_check_mark: | 
+`u64` | :heavy_check_mark: | :heavy_check_mark: | 
+`u8` | :heavy_check_mark: | :heavy_check_mark: | 
+`usize` | :heavy_check_mark: | :heavy_check_mark: | 
+`f32` | :heavy_check_mark: | :heavy_check_mark: | 
+`f64` | :heavy_check_mark: | :heavy_check_mark: | 
+`String` | :heavy_check_mark: | :heavy_check_mark: | 
+`Option<T>` | :heavy_check_mark: | :heavy_check_mark: | `T` must be supported 
+user defined `Type` and `Type<T, ...>` | :heavy_check_mark: | | user must implement the traits `ChoicesInput` and `ChoicesOutput` 
+any `Type` and `Type<T, ...>` | | :heavy_check_mark: | type must be serializable and deserializable with `serde` 
 
 # <a name="S-attributes"></a>Macro attributes
 

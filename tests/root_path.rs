@@ -19,7 +19,7 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    check_get!(port, "myconfig/debug", "true");
+    check_get_text!(port, "myconfig/debug", "true");
 
     rt.shutdown_background();
 }

@@ -10,13 +10,13 @@ use std::sync::{Arc, Mutex};
 #[choices(json)]
 struct Config {
     port: u16,
-    file: String,
+    files: Vec<String>,
 }
 
 lazy_static! {
     static ref CONFIG: Arc<Mutex<Config>> = Arc::new(Mutex::new(Config {
         port: 10,
-        file: String::from("tmp.txt")
+        files: vec![String::from("tmp.txt"), String::from("log.txt")]
     }));
 }
 
@@ -25,6 +25,6 @@ async fn main() {
     CONFIG.run((std::net::Ipv4Addr::LOCALHOST, 8081)).await;
 
     // Get the configuration's index at: curl localhost:8081/config
-    // To change port: curl -X PUT localhost:8081/config/port -d "42"
-    // To view the new value: curl localhost:8081/config/port
+    // To view the value of `files`: curl localhost:8081/config/files
+    // To change `files`: curl -X PUT -H "Content-Type: application/json" localhost:8081/config/files -d '["tmp.txt","other.txt"]'
 }

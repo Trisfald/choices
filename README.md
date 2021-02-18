@@ -59,10 +59,9 @@ Also check out the [documentation](/documentation.md).
 - [x] GET configuration field
 - [x] PUT configuration field
 - [x] user defined types
-- [ ] JSON support
+- [x] JSON support
 - [ ] custom validators
 - [ ] on change callbacks
-- [ ] defaults from env
 
 ## Thanks
 

@@ -1,38 +1,23 @@
 use choices::Choices;
 use lazy_static::lazy_static;
+use serde_json::json;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
+use util::json::*;
 use util::*;
 
 #[derive(Choices)]
-struct SimpleConfig {
+#[choices(json)]
+struct SimpleBoolConfig {
     debug: bool,
-}
-
-async fn get_non_existing_field_impl<F>(port: u16, server_future: F)
-where
-    F: Future + Send + 'static,
-    F::Output: Send + 'static,
-{
-    let rt = Runtime::new().unwrap();
-    rt.spawn(server_future);
-
-    let response = retry_await!(reqwest::get(&format!(
-        "http://127.0.0.1:{}/config/fake",
-        port
-    )))
-    .unwrap();
-    assert_eq!(response.status(), 404);
-
-    rt.shutdown_background();
 }
 
 #[tokio::test]
 async fn get_non_existing_field() {
     let port = get_free_port!();
     get_non_existing_field_impl(port, async move {
-        SimpleConfig { debug: true }
+        SimpleBoolConfig { debug: true }
             .run((std::net::Ipv4Addr::LOCALHOST, port))
             .await
     })
@@ -44,55 +29,12 @@ async fn get_non_existing_field_mutable() {
     let port = get_free_port!();
     get_non_existing_field_impl(port, async move {
         lazy_static! {
-            static ref CONFIG: Arc<Mutex<SimpleConfig>> =
-                Arc::new(Mutex::new(SimpleConfig { debug: true }));
+            static ref CONFIG: Arc<Mutex<SimpleBoolConfig>> =
+                Arc::new(Mutex::new(SimpleBoolConfig { debug: true }));
         }
         CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })
     .await;
-}
-
-#[derive(Choices)]
-struct ScalarConfig {
-    b: bool,
-    c: char,
-    int128: i128,
-    int16: i16,
-    int32: i32,
-    int64: i64,
-    int8: i8,
-    intsize: isize,
-    uint128: u128,
-    uint16: u16,
-    uint32: u32,
-    uint64: u64,
-    uint8: u8,
-    uintsize: usize,
-    float: f32,
-    double: f64,
-}
-
-impl ScalarConfig {
-    fn new() -> Self {
-        ScalarConfig {
-            b: true,
-            c: 'a',
-            int128: -1,
-            int16: -2,
-            int32: -3,
-            int64: -4,
-            int8: -5,
-            intsize: -6,
-            uint128: 1,
-            uint16: 2,
-            uint32: 3,
-            uint64: 4,
-            uint8: 5,
-            uintsize: 6,
-            float: 5.5,
-            double: 3.2,
-        }
-    }
 }
 
 async fn get_scalar_field_impl<F>(port: u16, server_future: F)
@@ -103,22 +45,22 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    check_get_field!(port, b, "true");
-    check_get_field!(port, c, "a");
-    check_get_field!(port, int128, "-1");
-    check_get_field!(port, int16, "-2");
-    check_get_field!(port, int32, "-3");
-    check_get_field!(port, int64, "-4");
-    check_get_field!(port, int8, "-5");
-    check_get_field!(port, intsize, "-6");
-    check_get_field!(port, uint128, "1");
-    check_get_field!(port, uint16, "2");
-    check_get_field!(port, uint32, "3");
-    check_get_field!(port, uint64, "4");
-    check_get_field!(port, uint8, "5");
-    check_get_field!(port, uintsize, "6");
-    check_get_field!(port, float, "5.5");
-    check_get_field!(port, double, "3.2");
+    check_get_field_json!(port, b, "true");
+    check_get_field_json!(port, c, json!("a").to_string());
+    check_get_field_json!(port, int128, "-1");
+    check_get_field_json!(port, int16, "-2");
+    check_get_field_json!(port, int32, "-3");
+    check_get_field_json!(port, int64, "-4");
+    check_get_field_json!(port, int8, "-5");
+    check_get_field_json!(port, intsize, "-6");
+    check_get_field_json!(port, uint128, "1");
+    check_get_field_json!(port, uint16, "2");
+    check_get_field_json!(port, uint32, "3");
+    check_get_field_json!(port, uint64, "4");
+    check_get_field_json!(port, uint8, "5");
+    check_get_field_json!(port, uintsize, "6");
+    check_get_field_json!(port, float, "5.5");
+    check_get_field_json!(port, double, "3.2");
 
     rt.shutdown_background();
 }
@@ -147,11 +89,6 @@ async fn get_scalar_field_mutable() {
     .await;
 }
 
-#[derive(Choices)]
-struct StringConfig {
-    string: String,
-}
-
 async fn get_string_field_impl<F>(port: u16, server_future: F)
 where
     F: Future + Send + 'static,
@@ -160,7 +97,7 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    check_get_field!(port, string, "blabla");
+    check_get_field_json!(port, string, json!("blabla").to_string());
 
     rt.shutdown_background();
 }
@@ -197,12 +134,6 @@ async fn get_string_field_mutable() {
     .await;
 }
 
-#[derive(Choices)]
-struct OptionConfig {
-    character: Option<char>,
-    empty: Option<bool>,
-}
-
 async fn get_option_field_impl<F>(port: u16, server_future: F)
 where
     F: Future + Send + 'static,
@@ -211,8 +142,8 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    check_get_field!(port, character, "a");
-    check_get_field!(port, empty, "");
+    check_get_field_json!(port, character, json!("a").to_string());
+    check_get_field_json!(port, empty, "null");
 
     rt.shutdown_background();
 }
@@ -242,6 +173,43 @@ async fn get_option_field_mutable() {
                     empty: None,
                 }))
             };
+        }
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
+    })
+    .await;
+}
+
+async fn get_vec_field_impl<F>(port: u16, server_future: F)
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    let rt = Runtime::new().unwrap();
+    rt.spawn(server_future);
+
+    check_get_field_json!(port, vector, json!([1, 2, 3]).to_string());
+
+    rt.shutdown_background();
+}
+
+#[tokio::test]
+async fn get_vec_field() {
+    let port = get_free_port!();
+    get_vec_field_impl(port, async move {
+        lazy_static! {
+            static ref CONFIG: VecConfig = VecConfig::new();
+        }
+        CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn get_vec_field_mutable() {
+    let port = get_free_port!();
+    get_vec_field_impl(port, async move {
+        lazy_static! {
+            static ref CONFIG: Arc<Mutex<VecConfig>> = Arc::new(Mutex::new(VecConfig::new()));
         }
         CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     })

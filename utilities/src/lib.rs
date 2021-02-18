@@ -1,5 +1,11 @@
 //! Utilities for the tests.
 
+pub mod configs;
+pub use configs::*;
+
+pub mod test_cases;
+pub use test_cases::*;
+
 /// Retries the given operation 50 times, waiting 1ms in between.
 /// `op` must return an awaitable future.
 #[macro_export]
@@ -28,11 +34,9 @@ macro_rules! get_free_port {
     }};
 }
 
-/// Performs a GET on a server running on localhost on port
-/// `port` and checks the body matches `expected`.
 #[macro_export]
 macro_rules! check_get {
-    ($port:expr, $path:expr, $expected:expr) => {
+    ($port:expr, $path:expr, $expected:expr, $content_type:expr) => {
         let response = retry_await!(reqwest::get(&format!(
             "http://127.0.0.1:{}/{}",
             $port, $path
@@ -41,19 +45,46 @@ macro_rules! check_get {
         assert_eq!(response.status(), 200);
         assert_eq!(
             response.headers()[reqwest::header::CONTENT_TYPE],
-            "text/plain; charset=utf-8"
+            $content_type
         );
         let body = response.text().await.unwrap();
         assert_eq!(body, $expected);
     };
 }
 
-/// Performs a GET for the field `name` on a server running on localhost on port
-/// `port` and checks the body matches `expected`.
+/// Performs a GET on a server running on localhost on port
+/// `port` and checks the body matches the `expected` text.
 #[macro_export]
-macro_rules! check_get_field {
+macro_rules! check_get_text {
+    ($port:expr, $path:expr, $expected:expr) => {
+        check_get!($port, $path, $expected, "text/plain; charset=utf-8")
+    };
+}
+
+/// Performs a GET on a server running on localhost on port
+/// `port` and checks the body matches the `expected` json.
+#[macro_export]
+macro_rules! check_get_json {
+    ($port:expr, $path:expr, $expected:expr) => {
+        check_get!($port, $path, $expected, "application/json")
+    };
+}
+
+/// Performs a GET for the field `name` on a server running on localhost on port
+/// `port` and checks the body matches the `expected` text.
+#[macro_export]
+macro_rules! check_get_field_text {
     ($port:expr, $name:expr, $expected:expr) => {
-        check_get!($port, concat!("config/", stringify!($name)), $expected)
+        check_get_text!($port, concat!("config/", stringify!($name)), $expected)
+    };
+}
+
+/// Performs a GET for the field `name` on a server running on localhost on port
+/// `port` and checks the body matches the `expected` json.
+#[macro_export]
+macro_rules! check_get_field_json {
+    ($port:expr, $name:expr, $expected:expr) => {
+        check_get_json!($port, concat!("config/", stringify!($name)), $expected)
     };
 }
 
