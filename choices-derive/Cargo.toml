@@ -1,6 +1,6 @@
 [package]
 name = "choices-derive"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Trisfald <trisfald@gmail.com>"]
 description = "HTTP configuration service by defining a struct, derive crate."
 documentation = "https://docs.rs/choices-derive"
