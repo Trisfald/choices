@@ -38,23 +38,28 @@ fn gen_fields_resources(
     fields: &Punctuated<Field, Comma>,
     root_path: &TokenStream,
     json: bool,
-) -> Vec<Option<TokenStream>> {
+) -> Vec<TokenStream> {
     fields
         .iter()
-        .map(|field| {
-            let field_ident = field
-                .ident
-                .as_ref()
-                .expect("unnamed fields are not supported!");
-            let field_name = field_ident.to_string();
-            let get_reply = if json {
-                get_reply_for_field_json(field_ident, quote! { $self })
+        .filter_map(|field| {
+            let field_attr = Attributes::from_field(field);
+            if field_attr.skip {
+                None
             } else {
-                get_reply_for_field_text(field_ident, quote! { $self })
-            };
-            Some(quote! {
-                choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).#get_reply
-            })
+                let field_ident = field
+                    .ident
+                    .as_ref()
+                    .expect("unnamed fields are not supported!");
+                let field_name = field_ident.to_string();
+                let get_reply = if json {
+                    get_reply_for_field_json(field_ident, quote! { $self })
+                } else {
+                    get_reply_for_field_text(field_ident, quote! { $self })
+                };
+                Some(quote! {
+                    choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).#get_reply
+                })
+            }
         })
         .collect()
 }
@@ -121,31 +126,36 @@ fn gen_fields_resources_mutable(
     fields: &Punctuated<Field, Comma>,
     root_path: &TokenStream,
     json: bool,
-) -> Vec<Option<TokenStream>> {
-    fields.iter().map(|field| {
-        let field_ident = field
-            .ident
-            .as_ref()
-            .expect("unnamed fields are not supported!");
-        let field_name = field_ident.to_string();
-        let setter_ident = quote::format_ident!("set_{}", field_ident);
-        let arg_type = &field.ty;
-        let (get_reply, put_reply) = if json {
-            (get_reply_for_field_json(field_ident, quote! { choices.lock().unwrap() }),
-            put_reply_for_field_json(arg_type, &setter_ident))
+) -> Vec<TokenStream> {
+    fields.iter().filter_map(|field| {
+        let field_attr = Attributes::from_field(field);
+        if field_attr.skip {
+            None
         } else {
-            (get_reply_for_field_text(field_ident, quote! { choices.lock().unwrap() }),
-            put_reply_for_field_text(arg_type, &setter_ident))
-        };
-        Some(quote! {{
-            let choices = $choices.clone();
-            let get = choices::warp::get().#get_reply;
-            let choices = $choices.clone();
-            let put = choices::warp::put()
-                .and(choices::warp::body::content_length_limit(1024 * 16))
-                .#put_reply;
-                choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).and(get.or(put))
-        }})
+            let field_ident = field
+                .ident
+                .as_ref()
+                .expect("unnamed fields are not supported!");
+            let field_name = field_ident.to_string();
+            let setter_ident = quote::format_ident!("set_{}", field_ident);
+            let arg_type = &field.ty;
+            let (get_reply, put_reply) = if json {
+                (get_reply_for_field_json(field_ident, quote! { choices.lock().unwrap() }),
+                put_reply_for_field_json(arg_type, &setter_ident))
+            } else {
+                (get_reply_for_field_text(field_ident, quote! { choices.lock().unwrap() }),
+                put_reply_for_field_text(arg_type, &setter_ident))
+            };
+            Some(quote! {{
+                let choices = $choices.clone();
+                let get = choices::warp::get().#get_reply;
+                let choices = $choices.clone();
+                let put = choices::warp::put()
+                    .and(choices::warp::body::content_length_limit(1024 * 16))
+                    .#put_reply;
+                    choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).and(get.or(put))
+            }})
+        }
     }).collect()
 }
 
@@ -189,8 +199,8 @@ fn put_reply_for_field_json(_arg_type: &Type, _setter_ident: &Ident) -> TokenStr
 fn gen_macros(
     root_path: &TokenStream,
     index_data: IndexData,
-    fields_resources: &[Option<TokenStream>],
-    fields_resources_mutable: &[Option<TokenStream>],
+    fields_resources: &[TokenStream],
+    fields_resources_mutable: &[TokenStream],
 ) -> TokenStream {
     let content_type_header = crate::constants::CONTENT_TYPE_HEADER;
     let index_body = index_data.body;
@@ -240,14 +250,18 @@ fn gen_impl(fields: &Punctuated<Field, Comma>) -> TokenStream {
 
         /// If you want more control over the http server instance you can use this
         /// function to retrieve the configuration's `warp::Filter`.
-        pub fn filter(&'static self) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
+        pub fn filter(
+            &'static self,
+        ) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
             use choices::warp::Filter;
             create_filter!(self).boxed()
         }
 
         /// If you want more control over the http server instance you can use this
         /// function to retrieve the configuration's `warp::Filter`.
-        pub fn filter_mutable(choices: std::sync::Arc<std::sync::Mutex<Self>>) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
+        pub fn filter_mutable(
+            choices: std::sync::Arc<std::sync::Mutex<Self>>,
+        ) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
             use choices::warp::Filter;
             create_filter_mutable!(choices).boxed()
         }
@@ -257,17 +271,31 @@ fn gen_impl(fields: &Punctuated<Field, Comma>) -> TokenStream {
 /// Generates the fields' setters.
 fn gen_setters(fields: &Punctuated<Field, Comma>) -> TokenStream {
     let setters = fields.iter().map(|field| {
-        let field_ident = field
-            .ident
-            .as_ref()
-            .expect("unnamed fields are not supported!");
-        let setter_ident = quote::format_ident!("set_{}", field_ident);
-        let arg_type = &field.ty;
-        Some(quote! {
-            pub fn #setter_ident(&mut self, value: impl Into<#arg_type>) {
-                self.#field_ident = value.into();
-            }
-        })
+        let field_attr = Attributes::from_field(field);
+        if field_attr.skip {
+            None
+        } else {
+            let field_ident = field
+                .ident
+                .as_ref()
+                .expect("unnamed fields are not supported!");
+            let setter_ident = quote::format_ident!("set_{}", field_ident);
+            let arg_type = &field.ty;
+            // Generate the callback tokenstream.
+            let callback = if let Some(callback) = field_attr.on_set {
+                quote! { #callback(&value); }
+            } else {
+                quote! {}
+            };
+            // Output the setter tokenstream.
+            Some(quote! {
+                pub fn #setter_ident(&mut self, value: impl Into<#arg_type>) {
+                    let value = value.into();
+                    #callback
+                    self.#field_ident = value;
+                }
+            })
+        }
     });
     quote! {
         #( #setters )*
@@ -282,7 +310,10 @@ fn gen_trait() -> TokenStream {
             choices::warp::serve(filter).run(addr).await
         }
 
-        async fn run_mutable<T: Into<std::net::SocketAddr> + Send>(choices: std::sync::Arc<std::sync::Mutex<Self>>, addr: T) {
+        async fn run_mutable<T: Into<std::net::SocketAddr> + Send>(
+            choices: std::sync::Arc<std::sync::Mutex<Self>>,
+            addr: T,
+        ) {
             let filter = create_filter_mutable!(choices);
             choices::warp::serve(filter).run(addr).await
         }

@@ -1,8 +1,8 @@
 # Documentation
 
 * [HTTP Requests](#S-requests)
-* [Supported configuration field types](#S-types)
 * [Macro attributes](#S-attributes)
+* [Supported configuration field types](#S-types)
 
 # <a name="S-requests"></a>HTTP Requests
 
@@ -24,6 +24,15 @@
 **Status code**: `200` if the new value has been set, `404` if the field doesn't exist or `400` if the new value is invalid\
 **Body**: An error message if the new value is invalid\
 **Example**: `curl -X PUT localhost:8081/config/filename -d "file.txt"`
+
+# <a name="S-attributes"></a>Macro attributes
+
+Attribute name | Value | Position | Usage | Effect
+-------------- | ----- | -------- | ------ | ------
+path | `String` | `struct` | `#[choices(path = "myconfig")]` | sets the root path of the configuration HTTP service
+json | | `struct` | `#[choices(json)]` | requests and responses content is in json
+on_set | `Expression` | `field` | `#[choices(on_set = print_value)]` | invokes an expression in the form `expr(&v)` where `v` is the new value (note: the old value is replaced after this call returns)
+skip | | `field` | `#[choices(skip)]` | do not treat this field as a 'configuration field'
 
 # <a name="S-types"></a>Supported configuration field types
 
@@ -49,10 +58,3 @@ Type | Text | Json | Notes
 `Option<T>` | :heavy_check_mark: | :heavy_check_mark: | `T` must be supported 
 user defined `Type` and `Type<T, ...>` | :heavy_check_mark: | | user must implement the traits `ChoicesInput` and `ChoicesOutput` 
 any `Type` and `Type<T, ...>` | | :heavy_check_mark: | type must be serializable and deserializable with `serde` 
-
-# <a name="S-attributes"></a>Macro attributes
-
-Attribute name | Value | Position | Effect
--------------- | ----- | -------- | ------
-path | `String` | `struct` | sets the root path of the configuration HTTP service
-json | | `struct` | requests and responses content is in json

@@ -3,6 +3,9 @@
 pub mod configs;
 pub use configs::*;
 
+pub mod constants;
+pub use constants::*;
+
 pub mod test_cases;
 pub use test_cases::*;
 
@@ -57,7 +60,7 @@ macro_rules! check_get {
 #[macro_export]
 macro_rules! check_get_text {
     ($port:expr, $path:expr, $expected:expr) => {
-        check_get!($port, $path, $expected, "text/plain; charset=utf-8")
+        check_get!($port, $path, $expected, CONTENT_TYPE_TEXT)
     };
 }
 
@@ -66,7 +69,7 @@ macro_rules! check_get_text {
 #[macro_export]
 macro_rules! check_get_json {
     ($port:expr, $path:expr, $expected:expr) => {
-        check_get!($port, $path, $expected, "application/json")
+        check_get!($port, $path, $expected, CONTENT_TYPE_JSON)
     };
 }
 
@@ -85,6 +88,52 @@ macro_rules! check_get_field_text {
 macro_rules! check_get_field_json {
     ($port:expr, $name:expr, $expected:expr) => {
         check_get_json!($port, concat!("config/", stringify!($name)), $expected)
+    };
+}
+
+/// Performs a PUT for the field `name` on a server running on localhost on port
+/// `port` and checks the response's status code. Then, it performs a GET to
+/// verify the field's value corresponds to `expected`.
+#[macro_export]
+macro_rules! check_put_field_json {
+    ($port:expr, $name:expr, $body:expr, $status:expr, $expected:expr $( , $headers:expr )* ) => {
+        let response = retry_await!(reqwest::Client::builder()
+            .build()
+            .unwrap()
+            .put(&format!(
+                "http://127.0.0.1:{}/{}",
+                $port,
+                concat!("config/", stringify!($name))
+            ))
+            .body($body)
+            $(.header($headers.0, $headers.1)),*
+            .send())
+        .unwrap();
+        assert_eq!(response.status(), $status);
+        check_get_field_json!($port, $name, $expected);
+    };
+}
+
+/// Performs a PUT for the field `name` on a server running on localhost on port
+/// `port` and checks the response's status code. Then, it performs a GET to
+/// verify the field's value corresponds to `expected`.
+#[macro_export]
+macro_rules! check_put_field_text {
+    ($port:expr, $name:expr, $body:expr, $status:expr, $expected:expr $( , $headers:expr )* ) => {
+        let response = retry_await!(reqwest::Client::builder()
+            .build()
+            .unwrap()
+            .put(&format!(
+                "http://127.0.0.1:{}/{}",
+                $port,
+                concat!("config/", stringify!($name))
+            ))
+            .body($body)
+            $(.header($headers.0, $headers.1)),*
+            .send())
+        .unwrap();
+        assert_eq!(response.status(), $status);
+        check_get_field_text!($port, $name, $expected);
     };
 }
 

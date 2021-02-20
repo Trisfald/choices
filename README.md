@@ -61,7 +61,7 @@ Also check out the [documentation](/documentation.md).
 - [x] user defined types
 - [x] JSON support
 - [ ] custom validators
-- [ ] on change callbacks
+- [x] on set callbacks
 
 ## Thanks
 

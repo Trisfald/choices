@@ -1,3 +1,4 @@
+use crate::attributes::Attributes;
 use crate::util::compute_type_string;
 use derive_new::new;
 #[cfg(not(feature = "json"))]
@@ -22,12 +23,15 @@ pub(crate) fn compute_index(fields: &Punctuated<Field, Comma>, json: bool) -> In
 fn compute_index_text(fields: &Punctuated<Field, Comma>) -> IndexData {
     let mut index = "Available configuration options:\n".to_string();
     fields.iter().for_each(|field| {
-        let field_ident = field
-            .ident
-            .as_ref()
-            .expect("unnamed fields are not supported!");
-        let type_name = compute_type_string(&field.ty);
-        index += &format!("  - {}: {}\n", &field_ident.to_string(), type_name);
+        let field_attr = Attributes::from_field(field);
+        if !field_attr.skip {
+            let field_ident = field
+                .ident
+                .as_ref()
+                .expect("unnamed fields are not supported!");
+            let type_name = compute_type_string(&field.ty);
+            index += &format!("  - {}: {}\n", &field_ident.to_string(), type_name);
+        }
     });
     IndexData::new(index, crate::constants::CONTENT_TYPE_TEXT)
 }
@@ -48,12 +52,20 @@ fn compute_index_json(_fields: &Punctuated<Field, Comma>) -> IndexData {
 
         let v: Vec<_> = _fields
             .iter()
-            .map(|field| {
-                let field_ident = field
-                    .ident
-                    .as_ref()
-                    .expect("unnamed fields are not supported!");
-                Entry::new(field_ident.to_string(), compute_type_string(&field.ty))
+            .filter_map(|field| {
+                let field_attr = Attributes::from_field(field);
+                if field_attr.skip {
+                    None
+                } else {
+                    let field_ident = field
+                        .ident
+                        .as_ref()
+                        .expect("unnamed fields are not supported!");
+                    Some(Entry::new(
+                        field_ident.to_string(),
+                        compute_type_string(&field.ty),
+                    ))
+                }
             })
             .collect();
         IndexData::new(

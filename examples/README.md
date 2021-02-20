@@ -27,3 +27,7 @@ Define your own configuration types (json version).
 ### [Json](json.rs)
 
 Using json to represent the configuration's values.
+
+### [On set callback](on_set.rs)
+
+Learn how to invoke a function each time a new configuration value is set.

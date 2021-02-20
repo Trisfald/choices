@@ -6,28 +6,6 @@ use tokio::runtime::Runtime;
 use util::json::*;
 use util::*;
 
-/// Performs a PUT for the field `name` on a server running on localhost on port
-/// `port` and checks the response's status code. Then, it performs a GET to
-/// verify the field's value corresponds to `expected`.
-macro_rules! check_put_field {
-    ($port:expr, $name:expr, $body:expr, $status:expr, $expected:expr $( , $headers:expr )* ) => {
-        let response = retry_await!(reqwest::Client::builder()
-            .build()
-            .unwrap()
-            .put(&format!(
-                "http://127.0.0.1:{}/{}",
-                $port,
-                concat!("config/", stringify!($name))
-            ))
-            .body($body)
-            $(.header($headers.0, $headers.1)),*
-            .send())
-        .unwrap();
-        assert_eq!(response.status(), $status);
-        check_get_field_json!($port, $name, $expected);
-    };
-}
-
 #[derive(Choices)]
 struct SimpleConfig {
     debug: bool,
@@ -72,17 +50,17 @@ async fn put_scalar_field() {
 
     macro_rules! check_numeric_field {
         ($name:expr, $body:expr) => {
-            check_put_field!(port, $name, $body, 200, $body);
-            check_put_field!(port, $name, "wrong", 400, $body);
+            check_put_field_json!(port, $name, $body, 200, $body);
+            check_put_field_json!(port, $name, "wrong", 400, $body);
         };
     }
 
     // bool
-    check_put_field!(port, b, "true", 200, "true");
-    check_put_field!(port, b, "wrong", 400, "true");
+    check_put_field_json!(port, b, "true", 200, "true");
+    check_put_field_json!(port, b, "wrong", 400, "true");
     // char
-    check_put_field!(port, c, json!("a").to_string(), 200, json!("a").to_string());
-    check_put_field!(port, c, "", 411, json!("a").to_string());
+    check_put_field_json!(port, c, json!("a").to_string(), 200, json!("a").to_string());
+    check_put_field_json!(port, c, "", 411, json!("a").to_string());
     // integers
     check_numeric_field!(int128, "-1");
     check_numeric_field!(int16, "-2");
@@ -116,14 +94,14 @@ async fn put_string_field() {
         CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     });
 
-    check_put_field!(
+    check_put_field_json!(
         port,
         string,
         json!("blabla").to_string(),
         200,
         json!("blabla").to_string()
     );
-    check_put_field!(
+    check_put_field_json!(
         port,
         string,
         json!("").to_string(),
@@ -147,16 +125,16 @@ async fn put_option_field() {
         CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     });
 
-    check_put_field!(
+    check_put_field_json!(
         port,
         character,
         json!("a").to_string(),
         200,
         json!("a").to_string()
     );
-    check_put_field!(port, character, "null", 200, "null");
-    check_put_field!(port, empty, "true", 200, "true");
-    check_put_field!(port, empty, "wrong", 400, "true");
+    check_put_field_json!(port, character, "null", 200, "null");
+    check_put_field_json!(port, empty, "true", 200, "true");
+    check_put_field_json!(port, empty, "wrong", 400, "true");
 
     rt.shutdown_background();
 }
@@ -173,7 +151,7 @@ async fn put_vec_field() {
         CONFIG.run((std::net::Ipv4Addr::LOCALHOST, port)).await
     });
 
-    check_put_field!(
+    check_put_field_json!(
         port,
         vector,
         json!([0, 1, 2]).to_string(),
