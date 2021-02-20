@@ -25,16 +25,9 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    let response =
-        retry_await!(reqwest::get(&format!("http://127.0.0.1:{}/config", port))).unwrap();
-    assert_eq!(response.status(), 200);
-    assert_eq!(
-        response.headers()[reqwest::header::CONTENT_TYPE],
-        "application/json"
-    );
-    let body = response.text().await.unwrap();
-    assert_eq!(
-        body,
+    check_get!(
+        port,
+        "config",
         json!([
             {"name": "debug", "type": "bool"},
             {"name": "retries", "type": "u8"},
@@ -42,7 +35,8 @@ where
             {"name": "score", "type": "Option<i32>"},
             {"name": "map", "type": "HashMap<u8, i32>"}
         ])
-        .to_string()
+        .to_string(),
+        util::CONTENT_TYPE_JSON
     );
 
     rt.shutdown_background();

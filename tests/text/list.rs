@@ -21,18 +21,12 @@ where
     let rt = Runtime::new().unwrap();
     rt.spawn(server_future);
 
-    let response =
-        retry_await!(reqwest::get(&format!("http://127.0.0.1:{}/config", port))).unwrap();
-    assert_eq!(response.status(), 200);
-    assert_eq!(
-        response.headers()[reqwest::header::CONTENT_TYPE],
-        "text/plain; charset=utf-8"
-    );
-    let body = response.text().await.unwrap();
-    assert_eq!(
-        body,
+    check_get!(
+        port,
+        "config",
         "Available configuration options:\n  - debug: bool\n  \
-        - retries: u8\n  - delay: f64\n  - score: Option<i32>\n"
+            - retries: u8\n  - delay: f64\n  - score: Option<i32>\n",
+        util::CONTENT_TYPE_TEXT
     );
 
     rt.shutdown_background();

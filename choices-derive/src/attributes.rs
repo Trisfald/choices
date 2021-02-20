@@ -7,15 +7,19 @@ use syn::{
     self,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    Attribute, Ident, LitStr, Token,
+    Attribute, Expr, Ident, LitStr, Token,
 };
 
 /// All types of attribute available in choices.
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum ChoicesAttribute {
     // single-identifier attributes
     Json(Ident),
+    Skip(Ident),
     // ident = "string literal"
     RootPath(Ident, LitStr),
+    // ident = arbitrary_expr
+    OnSet(Ident, Expr),
 }
 
 impl Parse for ChoicesAttribute {
@@ -47,9 +51,18 @@ impl Parse for ChoicesAttribute {
                     _ => abort!(name, "unexpected attribute: {}", name_str),
                 }
             } else {
-                abort! {
-                    assign_token,
-                    "expected `string literal` or after `=`"
+                match input.parse::<Expr>() {
+                    Ok(expr) => {
+                        if name_str == "on_set" {
+                            Ok(OnSet(name, expr))
+                        } else {
+                            abort!(name, "unexpected attribute: {}", name_str);
+                        }
+                    }
+                    Err(_) => abort! {
+                        assign_token,
+                        "expected `string literal` or `expression` after `=`"
+                    },
                 }
             }
         } else if input.peek(syn::token::Paren) {
@@ -59,6 +72,7 @@ impl Parse for ChoicesAttribute {
             // Attributes represented with a sole identifier.
             match name_str.as_ref() {
                 "json" => Ok(Json(name)),
+                "skip" => Ok(Skip(name)),
                 _ => abort!(name, "unexpected attribute: {}", name_str),
             }
         }
@@ -79,6 +93,8 @@ fn parse_choices_attributes(attrs: &[Attribute]) -> Vec<ChoicesAttribute> {
 pub(crate) struct Attributes {
     pub(crate) root_path: Option<TokenStream>,
     pub(crate) json: bool,
+    pub(crate) on_set: Option<Expr>,
+    pub(crate) skip: bool,
 }
 
 impl Attributes {
@@ -86,19 +102,39 @@ impl Attributes {
         Self {
             root_path: None,
             json: false,
+            on_set: None,
+            skip: false,
         }
     }
 
-    fn push_attrs(&mut self, attrs: &[Attribute]) {
+    fn push_attrs(&mut self, attrs: &[Attribute], from_struct: bool) {
         use ChoicesAttribute::*;
 
         for attr in parse_choices_attributes(attrs) {
             match attr {
-                Json(_) => {
+                Json(ident) => {
+                    if !from_struct {
+                        abort!(ident, "#[choices(json)] can be used only on struct level");
+                    }
                     self.json = true;
                 }
-                RootPath(_, path) => {
+                RootPath(ident, path) => {
+                    if !from_struct {
+                        abort!(ident, "#[choices(path)] can be used only on struct level");
+                    }
                     self.root_path = Some(quote!(#path));
+                }
+                OnSet(ident, expr) => {
+                    if from_struct {
+                        abort!(ident, "#[choices(on_set)] can be used only on field level");
+                    }
+                    self.on_set = Some(expr);
+                }
+                Skip(ident) => {
+                    if from_struct {
+                        abort!(ident, "#[choices(skip)] can be used only on field level");
+                    }
+                    self.skip = true;
                 }
             }
         }
@@ -106,7 +142,13 @@ impl Attributes {
 
     pub(crate) fn from_struct(attrs: &[Attribute]) -> Self {
         let mut res = Self::new();
-        res.push_attrs(attrs);
+        res.push_attrs(attrs, true);
+        res
+    }
+
+    pub(crate) fn from_field(field: &syn::Field) -> Self {
+        let mut res = Self::new();
+        res.push_attrs(&field.attrs, false);
         res
     }
 }

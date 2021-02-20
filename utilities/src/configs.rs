@@ -1,3 +1,6 @@
+//! Configuration objects commonly used in the integration tests.
+//! Defining them in one place reduces compile times.
+
 use choices::Choices;
 
 macro_rules! scalar_config {
