@@ -28,9 +28,9 @@ fn check_port(port: &u16) -> ChoicesResult<()> {
     if *port > 1000 {
         Ok(())
     } else {
-        Err(ChoicesError::ValidationError(format!(
-            "value must be greater than 1000"
-        )))
+        Err(ChoicesError::ValidationError(
+            "value must be greater than 1000".to_string(),
+        ))
     }
 }
 
@@ -47,7 +47,7 @@ async fn main() {
         if !v.is_empty() {
             Ok(())
         } else {
-            Err(ChoicesError::ValidationError(format!("invalid value")))
+            Err(ChoicesError::ValidationError("invalid value".to_string()))
         }
     });
     CONFIG
