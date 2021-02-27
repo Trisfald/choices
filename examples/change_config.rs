@@ -25,7 +25,7 @@ async fn main() {
     CONFIG.lock().unwrap().port = 100;
 
     // Set a config field through its setter.
-    CONFIG.lock().unwrap().set_name("another service");
+    CONFIG.lock().unwrap().set_name("another service").unwrap();
 
     CONFIG.run((std::net::Ipv4Addr::LOCALHOST, 8081)).await;
 

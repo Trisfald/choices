@@ -28,6 +28,8 @@ pub enum ChoicesError {
     ParseBoolError(ParseBoolError),
     /// Error when parsing a char.
     ParseCharError(ParseCharError),
+    /// Error when validating a field.
+    ValidationError(String),
 }
 
 impl Display for ChoicesError {
@@ -46,6 +48,7 @@ impl Display for ChoicesError {
             ParseFloatError(err) => write!(f, "ParseFloatError: {}", err),
             ParseBoolError(err) => write!(f, "ParseBoolError: {}", err),
             ParseCharError(err) => write!(f, "ParseCharError: {}", err),
+            ValidationError(err) => write!(f, "ValidationError: {}", err),
         }
     }
 }

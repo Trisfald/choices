@@ -14,8 +14,8 @@ struct Config {
 #[test]
 fn on_set_for_setter() {
     let mut config = Config::default();
-    config.set_value(2);
-    config.set_value(3);
+    config.set_value(2).unwrap();
+    config.set_value(3).unwrap();
     assert_eq!(config.value, 3);
     assert_eq!(config.total, 5);
 }
