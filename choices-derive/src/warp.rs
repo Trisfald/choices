@@ -164,14 +164,17 @@ fn put_reply_for_field_text(arg_type: &Type, setter_ident: &Ident) -> TokenStrea
     quote! {
         and(choices::warp::body::bytes())
         .map(move |bytes: choices::bytes::Bytes| {
+            use choices::warp::{reply::with_status, http::StatusCode};
             let result: choices::ChoicesResult<#arg_type> = choices::ChoicesInput::from_chars(&bytes);
             match result {
                 Ok(value) => {
-                    choices.lock().unwrap().#setter_ident(value);
-                    choices::warp::reply::with_status("".to_string(), choices::warp::http::StatusCode::OK)
+                    match choices.lock().unwrap().#setter_ident(value) {
+                        Ok(_) => with_status("".to_string(), StatusCode::OK),
+                        Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
+                    }
                 }
                 Err(err) => {
-                    choices::warp::reply::with_status(err.to_string(), choices::warp::http::StatusCode::BAD_REQUEST)
+                    with_status(err.to_string(), StatusCode::BAD_REQUEST)
                 }
             }
         })
@@ -188,8 +191,11 @@ fn put_reply_for_field_json(_arg_type: &Type, _setter_ident: &Ident) -> TokenStr
         quote! {
             and(choices::warp::body::json())
             .map(move |value: #_arg_type| {
-                choices.lock().unwrap().#_setter_ident(value);
-                choices::warp::reply::with_status("".to_string(), choices::warp::http::StatusCode::OK)
+                use choices::warp::{reply::with_status, http::StatusCode};
+                match choices.lock().unwrap().#_setter_ident(value) {
+                    Ok(_) => with_status("".to_string(), StatusCode::OK),
+                    Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
+                }
             })
         }
     }
@@ -287,12 +293,20 @@ fn gen_setters(fields: &Punctuated<Field, Comma>) -> TokenStream {
             } else {
                 quote! {}
             };
+            // Generate the validator tokenstream.
+            let validator = if let Some(validator) = field_attr.validator {
+                quote! { #validator(&value)?; }
+            } else {
+                quote! {}
+            };
             // Output the setter tokenstream.
             Some(quote! {
-                pub fn #setter_ident(&mut self, value: impl Into<#arg_type>) {
+                pub fn #setter_ident(&mut self, value: impl Into<#arg_type>) -> choices::ChoicesResult<()> {
                     let value = value.into();
+                    #validator
                     #callback
                     self.#field_ident = value;
+                    Ok(())
                 }
             })
         }

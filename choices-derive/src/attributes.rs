@@ -20,6 +20,7 @@ pub(crate) enum ChoicesAttribute {
     RootPath(Ident, LitStr),
     // ident = arbitrary_expr
     OnSet(Ident, Expr),
+    Validator(Ident, Expr),
 }
 
 impl Parse for ChoicesAttribute {
@@ -52,13 +53,11 @@ impl Parse for ChoicesAttribute {
                 }
             } else {
                 match input.parse::<Expr>() {
-                    Ok(expr) => {
-                        if name_str == "on_set" {
-                            Ok(OnSet(name, expr))
-                        } else {
-                            abort!(name, "unexpected attribute: {}", name_str);
-                        }
-                    }
+                    Ok(expr) => match name_str.as_ref() {
+                        "on_set" => Ok(OnSet(name, expr)),
+                        "validator" => Ok(Validator(name, expr)),
+                        _ => abort!(name, "unexpected attribute: {}", name_str),
+                    },
                     Err(_) => abort! {
                         assign_token,
                         "expected `string literal` or `expression` after `=`"
@@ -95,6 +94,7 @@ pub(crate) struct Attributes {
     pub(crate) json: bool,
     pub(crate) on_set: Option<Expr>,
     pub(crate) skip: bool,
+    pub(crate) validator: Option<Expr>,
 }
 
 impl Attributes {
@@ -104,6 +104,7 @@ impl Attributes {
             json: false,
             on_set: None,
             skip: false,
+            validator: None,
         }
     }
 
@@ -135,6 +136,15 @@ impl Attributes {
                         abort!(ident, "#[choices(skip)] can be used only on field level");
                     }
                     self.skip = true;
+                }
+                Validator(ident, expr) => {
+                    if from_struct {
+                        abort!(
+                            ident,
+                            "#[choices(validator)] can be used only on field level"
+                        );
+                    }
+                    self.validator = Some(expr);
                 }
             }
         }

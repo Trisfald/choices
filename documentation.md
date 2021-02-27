@@ -33,6 +33,7 @@ path | `String` | `struct` | `#[choices(path = "myconfig")]` | sets the root pat
 json | | `struct` | `#[choices(json)]` | requests and responses content is in json
 on_set | `Expression` | `field` | `#[choices(on_set = print_value)]` | invokes an expression in the form `expr(&v)` where `v` is the new value (note: the old value is replaced after this call returns)
 skip | | `field` | `#[choices(skip)]` | do not treat this field as a 'configuration field'
+validator | `Expression` | `field` | `#[choices(validator = check_value)]` | invokes an expression in the form `expr(&v) -> ChoicesResult<()>` where `v` is the new value; the field's value is updated only if the result is `Ok`
 
 # <a name="S-types"></a>Supported configuration field types
 

@@ -38,13 +38,21 @@ async fn main() {
     CONFIG.lock().unwrap().port = 100;
 
     // Set a config field through its setter. This will invoke the callback.
-    CONFIG.lock().unwrap().set_port(42u16);
+    CONFIG.lock().unwrap().set_port(42u16).unwrap();
 
     // The default callback for file does nothing.
-    CONFIG.lock().unwrap().set_file("file_1".to_string());
+    CONFIG
+        .lock()
+        .unwrap()
+        .set_file("file_1".to_string())
+        .unwrap();
     // Set a callback that prints the new value.
     CONFIG.lock().unwrap().file_callback = Box::new(|v| println!("new file: {}", v));
-    CONFIG.lock().unwrap().set_file("file_2".to_string());
+    CONFIG
+        .lock()
+        .unwrap()
+        .set_file("file_2".to_string())
+        .unwrap();
 
     CONFIG.run((std::net::Ipv4Addr::LOCALHOST, 8081)).await;
 

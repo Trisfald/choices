@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Derive attribute to skip configuration fields.
 - On set callbacks.
+- Custom field validators.
 
 ## [0.2.0] - 2021-02-18
 ### Added

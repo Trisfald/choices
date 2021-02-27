@@ -60,7 +60,7 @@ Also check out the [documentation](/documentation.md).
 - [x] PUT configuration field
 - [x] user defined types
 - [x] JSON support
-- [ ] custom validators
+- [x] custom validators
 - [x] on set callbacks
 
 ## Thanks
