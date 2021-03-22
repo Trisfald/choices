@@ -43,7 +43,7 @@ fn gen_fields_resources(
         .iter()
         .filter_map(|field| {
             let field_attr = Attributes::from_field(field);
-            if field_attr.skip {
+            if field_attr.skip || field_attr.hide_get {
                 None
             } else {
                 let field_ident = field
@@ -129,7 +129,7 @@ fn gen_fields_resources_mutable(
 ) -> Vec<TokenStream> {
     fields.iter().filter_map(|field| {
         let field_attr = Attributes::from_field(field);
-        if field_attr.skip {
+        if field_attr.skip || (field_attr.hide_get && field_attr.hide_put) {
             None
         } else {
             let field_ident = field
@@ -146,15 +146,31 @@ fn gen_fields_resources_mutable(
                 (get_reply_for_field_text(field_ident, quote! { choices.lock().unwrap() }),
                 put_reply_for_field_text(arg_type, &setter_ident))
             };
-            Some(quote! {{
-                let choices = $choices.clone();
-                let get = choices::warp::get().#get_reply;
-                let choices = $choices.clone();
-                let put = choices::warp::put()
-                    .and(choices::warp::body::content_length_limit(1024 * 16))
-                    .#put_reply;
+            if field_attr.hide_get {
+                Some(quote! {{
+                    let choices = $choices.clone();
+                    let put = choices::warp::put()
+                        .and(choices::warp::body::content_length_limit(1024 * 16))
+                        .#put_reply;
+                    choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).and(put)
+                }})
+            } else if field_attr.hide_put {
+                Some(quote! {{
+                    let choices = $choices.clone();
+                    let get = choices::warp::get().#get_reply;
+                    choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).and(get)
+                }})
+            } else {
+                Some(quote! {{
+                    let choices = $choices.clone();
+                    let get = choices::warp::get().#get_reply;
+                    let choices = $choices.clone();
+                    let put = choices::warp::put()
+                        .and(choices::warp::body::content_length_limit(1024 * 16))
+                        .#put_reply;
                     choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).and(get.or(put))
-            }})
+                }})
+            }
         }
     }).collect()
 }

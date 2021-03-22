@@ -91,6 +91,25 @@ macro_rules! check_get_field_json {
     };
 }
 
+/// Performs an empty PUT for the field `name` on a server running on localhost on port
+/// `port` and checks the response's status code.
+#[macro_export]
+macro_rules! check_empty_put {
+    ($port:expr, $name:expr, $status:expr) => {
+        let response = retry_await!(reqwest::Client::builder()
+            .build()
+            .unwrap()
+            .put(&format!(
+                "http://127.0.0.1:{}/{}",
+                $port,
+                concat!("config/", stringify!($name))
+            ))
+            .send())
+        .unwrap();
+        assert_eq!(response.status(), $status);
+    };
+}
+
 /// Performs a PUT for the field `name` on a server running on localhost on port
 /// `port` and checks the response's status code. Then, it performs a GET to
 /// verify the field's value corresponds to `expected`.

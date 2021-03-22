@@ -16,6 +16,8 @@ pub(crate) enum ChoicesAttribute {
     // single-identifier attributes
     Json(Ident),
     Skip(Ident),
+    HideGet(Ident),
+    HidePut(Ident),
     // ident = "string literal"
     RootPath(Ident, LitStr),
     // ident = arbitrary_expr
@@ -72,6 +74,8 @@ impl Parse for ChoicesAttribute {
             match name_str.as_ref() {
                 "json" => Ok(Json(name)),
                 "skip" => Ok(Skip(name)),
+                "hide_get" => Ok(HideGet(name)),
+                "hide_put" => Ok(HidePut(name)),
                 _ => abort!(name, "unexpected attribute: {}", name_str),
             }
         }
@@ -94,6 +98,8 @@ pub(crate) struct Attributes {
     pub(crate) json: bool,
     pub(crate) on_set: Option<Expr>,
     pub(crate) skip: bool,
+    pub(crate) hide_get: bool,
+    pub(crate) hide_put: bool,
     pub(crate) validator: Option<Expr>,
 }
 
@@ -104,6 +110,8 @@ impl Attributes {
             json: false,
             on_set: None,
             skip: false,
+            hide_get: false,
+            hide_put: false,
             validator: None,
         }
     }
@@ -136,6 +144,24 @@ impl Attributes {
                         abort!(ident, "#[choices(skip)] can be used only on field level");
                     }
                     self.skip = true;
+                }
+                HideGet(ident) => {
+                    if from_struct {
+                        abort!(
+                            ident,
+                            "#[choices(hide_get)] can be used only on field level"
+                        );
+                    }
+                    self.hide_get = true;
+                }
+                HidePut(ident) => {
+                    if from_struct {
+                        abort!(
+                            ident,
+                            "#[choices(hide_put)] can be used only on field level"
+                        );
+                    }
+                    self.hide_put = true;
                 }
                 Validator(ident, expr) => {
                     if from_struct {
