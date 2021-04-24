@@ -78,7 +78,43 @@ pub mod serde;
 pub use crate::serde::{ChoicesInput, ChoicesOutput};
 
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock};
+
+/// Trait for a generic read/write lock.
+///
+/// Access to both read and write can be shared or exclusive, depending
+/// on the concrete implementation.
+pub trait Lock<'a>: Send + Sync {
+    /// The type wrapped by the lock.
+    type Value: ?Sized;
+    /// Type of lock guard for read access.
+    type ReadGuard: Deref<Target = Self::Value>;
+    /// Type of lock guard for write access.
+    type WriteGuard: Deref<Target = Self::Value> + DerefMut<Target = Self::Value>;
+
+    /// Locks with read access.
+    fn read(&'a self) -> LockResult<Self::ReadGuard>;
+    /// Locks with write access.
+    fn write(&'a self) -> LockResult<Self::WriteGuard>;
+}
+
+impl<'a, T: ?Sized + Send + 'a> Lock<'a> for Mutex<T> {
+    type Value = T;
+    type ReadGuard = MutexGuard<'a, T>;
+    type WriteGuard = MutexGuard<'a, T>;
+
+    fn read(&'a self) -> LockResult<Self::ReadGuard> {
+        self.lock()
+    }
+    fn write(&'a self) -> LockResult<Self::WriteGuard> {
+        self.lock()
+    }
+}
+
+// impl Lock<T: ?Sized>for RwLock<T> {
+
+// }
 
 /// A trait to manage the http server responsible for the configuration.
 #[self::async_trait]
@@ -87,17 +123,28 @@ pub trait Choices {
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T);
 
     #[doc(hidden)]
-    async fn run_mutable<T: Into<SocketAddr> + Send>(choices: Arc<Mutex<Self>>, addr: T);
+    async fn run_mutable<'a, T: Into<SocketAddr> + Send, U>(choices: Arc<U>, addr: T)
+    where
+        U: Lock<'a, Value = Self>,
+        <U as Lock<'a>>::ReadGuard: Deref<Target = Self>,
+        <U as Lock<'a>>::WriteGuard: Deref<Target = Self> + DerefMut<Target = Self>;
 }
 
 #[self::async_trait]
-impl<C: Choices + Send> Choices for Arc<Mutex<C>> {
+impl<L> Choices for Arc<L>
+where
+    for<'a> <L as Lock<'a>>::Value: Choices + Send,
+    for<'a> L: Lock<'a>,
+{
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
-        <C as Choices>::run_mutable(self.clone(), addr).await;
+        <<L as Lock>::Value as Choices>::run_mutable(self.clone(), addr).await;
     }
 
     #[doc(hidden)]
-    async fn run_mutable<T: Into<SocketAddr> + Send>(_: Arc<Mutex<Self>>, _: T) {
-        panic!("do not call run_mutable() when T=Arc<Mutex>, use run() instead")
+    async fn run_mutable<'b, T: Into<SocketAddr> + Send, U>(_: Arc<U>, _: T)
+    where
+        U: Lock<'b, Value = Self>,
+    {
+        panic!("do not call run_mutable() when T=Arc<Lock>, use run() instead")
     }
 }

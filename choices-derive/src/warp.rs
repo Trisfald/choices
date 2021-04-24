@@ -121,7 +121,7 @@ fn get_reply_for_field_json(_field_ident: &Ident, _access_pattern: TokenStream) 
 }
 
 /// Generates the mutable fields' HTTP resources, i.e. the GET methods to retrieve the value of
-/// fields from an Arc<Mutex<T>> and the PUT methods to modify such fields.
+/// fields from an Arc<Lock> and the PUT methods to modify such fields.
 fn gen_fields_resources_mutable(
     fields: &Punctuated<Field, Comma>,
     root_path: &TokenStream,
@@ -140,10 +140,10 @@ fn gen_fields_resources_mutable(
             let setter_ident = quote::format_ident!("set_{}", field_ident);
             let arg_type = &field.ty;
             let (get_reply, put_reply) = if json {
-                (get_reply_for_field_json(field_ident, quote! { choices.lock().unwrap() }),
+                (get_reply_for_field_json(field_ident, quote! { choices.read().unwrap() }),
                 put_reply_for_field_json(arg_type, &setter_ident))
             } else {
-                (get_reply_for_field_text(field_ident, quote! { choices.lock().unwrap() }),
+                (get_reply_for_field_text(field_ident, quote! { choices.read().unwrap() }),
                 put_reply_for_field_text(arg_type, &setter_ident))
             };
             if field_attr.hide_get {
@@ -184,7 +184,7 @@ fn put_reply_for_field_text(arg_type: &Type, setter_ident: &Ident) -> TokenStrea
             let result: choices::ChoicesResult<#arg_type> = choices::ChoicesInput::from_chars(&bytes);
             match result {
                 Ok(value) => {
-                    match choices.lock().unwrap().#setter_ident(value) {
+                    match choices.write().unwrap().#setter_ident(value) {
                         Ok(_) => with_status("".to_string(), StatusCode::OK),
                         Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
                     }
@@ -208,7 +208,7 @@ fn put_reply_for_field_json(_arg_type: &Type, _setter_ident: &Ident) -> TokenStr
             and(choices::warp::body::json())
             .map(move |value: #_arg_type| {
                 use choices::warp::{reply::with_status, http::StatusCode};
-                match choices.lock().unwrap().#_setter_ident(value) {
+                match choices.write().unwrap().#_setter_ident(value) {
                     Ok(_) => with_status("".to_string(), StatusCode::OK),
                     Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
                 }
@@ -281,9 +281,14 @@ fn gen_impl(fields: &Punctuated<Field, Comma>) -> TokenStream {
 
         /// If you want more control over the http server instance you can use this
         /// function to retrieve the configuration's `warp::Filter`.
-        pub fn filter_mutable(
-            choices: std::sync::Arc<std::sync::Mutex<Self>>,
-        ) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
+        pub fn filter_mutable<'a, L: choices::Lock<'a>>(
+            choices: std::sync::Arc<L>,
+        ) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)>
+        where
+            <L as choices::Lock<'a>>::ReadGuard: std::ops::Deref<Target = Self>,
+            <L as choices::Lock<'a>>::WriteGuard:
+                std::ops::Deref<Target = Self> + std::ops::DerefMut<Target = Self>,
+        {
             use choices::warp::Filter;
             create_filter_mutable!(choices).boxed()
         }
@@ -340,10 +345,15 @@ fn gen_trait() -> TokenStream {
             choices::warp::serve(filter).run(addr).await
         }
 
-        async fn run_mutable<T: Into<std::net::SocketAddr> + Send>(
-            choices: std::sync::Arc<std::sync::Mutex<Self>>,
+        async fn run_mutable<'a, T: Into<std::net::SocketAddr> + Send, U: choices::Lock<'a>>(
+            choices: std::sync::Arc<U>,
             addr: T,
-        ) {
+        ) where
+            U: choices::Lock<'a, Value = Self>,
+            <U as choices::Lock<'a>>::ReadGuard: std::ops::Deref<Target = Self>,
+            <U as choices::Lock<'a>>::WriteGuard:
+                std::ops::Deref<Target = Self> + std::ops::DerefMut<Target = Self>,
+        {
             let filter = create_filter_mutable!(choices);
             choices::warp::serve(filter).run(addr).await
         }
