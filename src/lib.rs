@@ -78,26 +78,43 @@ pub mod serde;
 pub use crate::serde::{ChoicesInput, ChoicesOutput};
 
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 /// A trait to manage the http server responsible for the configuration.
 #[self::async_trait]
 pub trait Choices {
+    /// Type of lock used to access the underlying configuration object.
+    type Lock;
+
     /// Starts the configuration http server on the chosen address.
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T);
 
     #[doc(hidden)]
-    async fn run_mutable<T: Into<SocketAddr> + Send>(choices: Arc<Mutex<Self>>, addr: T);
+    async fn run_mutable<T: Into<SocketAddr> + Send>(_: Arc<Mutex<Self>>, _: T) {
+        unimplemented!()
+    }
+
+    #[doc(hidden)]
+    async fn run_mutable_rw<T: Into<SocketAddr> + Send>(_: Arc<RwLock<Self>>, _: T) where 
+    Self: Sync {
+        unimplemented!()
+    }    
 }
 
 #[self::async_trait]
 impl<C: Choices + Send> Choices for Arc<Mutex<C>> {
-    async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
-        <C as Choices>::run_mutable(self.clone(), addr).await;
-    }
+    type Lock = C::Lock;
 
-    #[doc(hidden)]
-    async fn run_mutable<T: Into<SocketAddr> + Send>(_: Arc<Mutex<Self>>, _: T) {
-        panic!("do not call run_mutable() when T=Arc<Mutex>, use run() instead")
+    async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
+        C::run_mutable(self.clone(), addr).await;
+    }
+}
+
+#[self::async_trait]
+impl<C: Choices + Send + Sync> Choices for Arc<RwLock<C>> {
+    type Lock = C::Lock;
+
+    async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
+        C::run_mutable_rw(self.clone(), addr).await;
     }
 }

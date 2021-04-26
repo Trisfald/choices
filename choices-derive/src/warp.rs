@@ -335,6 +335,8 @@ fn gen_setters(fields: &Punctuated<Field, Comma>) -> TokenStream {
 /// Generates the Choices trait impl block.
 fn gen_trait() -> TokenStream {
     quote! {
+        type Lock = std::sync::Mutex<Self>;
+
         async fn run<T: Into<std::net::SocketAddr> + Send>(&'static self, addr: T) {
             let filter = create_filter!(self);
             choices::warp::serve(filter).run(addr).await
@@ -347,5 +349,13 @@ fn gen_trait() -> TokenStream {
             let filter = create_filter_mutable!(choices);
             choices::warp::serve(filter).run(addr).await
         }
+
+        async fn run_mutable_rw<T: Into<std::net::SocketAddr> + Send>(
+            choices: std::sync::Arc<std::sync::RwLock<Self>>,
+            addr: T,
+        ) {
+            // let filter = create_filter_mutable!(choices);
+            // choices::warp::serve(filter).run(addr).await
+        }        
     }
 }
