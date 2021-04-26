@@ -36,6 +36,7 @@ skip | | `field` | `#[choices(skip)]` | do not treat this field as a 'configurat
 hide_get | | `field` | `#[choices(hide_get)]` | do not generate the HTTP GET for this field
 hide_put | | `field` | `#[choices(hide_put)]` | do not generate the HTTP PUT for this field
 validator | `Expression` | `field` | `#[choices(validator = check_value)]` | invokes an expression in the form `expr(&v) -> ChoicesResult<()>` where `v` is the new value; the field's value is updated only if the result is `Ok`
+rw_lock | | `struct` | `#[choices(rw_lock)]` | generates code to hold the configuration object in an `Arc<RwLock<>>` instead of an `Arc<Mutex<>>`.
 
 # <a name="S-types"></a>Supported configuration field types
 

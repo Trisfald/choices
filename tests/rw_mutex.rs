@@ -1,11 +1,11 @@
 use choices::Choices;
 use lazy_static::lazy_static;
-use std::future::Future;
 use std::sync::{Arc, RwLock};
 use tokio::runtime::Runtime;
 use util::*;
 
 #[derive(Choices)]
+#[choices(rw_lock)]
 struct Config {
     debug: bool,
 }

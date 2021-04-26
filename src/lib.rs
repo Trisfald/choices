@@ -83,9 +83,6 @@ use std::sync::{Arc, Mutex, RwLock};
 /// A trait to manage the http server responsible for the configuration.
 #[self::async_trait]
 pub trait Choices {
-    /// Type of lock used to access the underlying configuration object.
-    type Lock;
-
     /// Starts the configuration http server on the chosen address.
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T);
 
@@ -95,16 +92,16 @@ pub trait Choices {
     }
 
     #[doc(hidden)]
-    async fn run_mutable_rw<T: Into<SocketAddr> + Send>(_: Arc<RwLock<Self>>, _: T) where 
-    Self: Sync {
+    async fn run_mutable_rw<T: Into<SocketAddr> + Send>(_: Arc<RwLock<Self>>, _: T)
+    where
+        Self: Sync,
+    {
         unimplemented!()
-    }    
+    }
 }
 
 #[self::async_trait]
 impl<C: Choices + Send> Choices for Arc<Mutex<C>> {
-    type Lock = C::Lock;
-
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
         C::run_mutable(self.clone(), addr).await;
     }
@@ -112,8 +109,6 @@ impl<C: Choices + Send> Choices for Arc<Mutex<C>> {
 
 #[self::async_trait]
 impl<C: Choices + Send + Sync> Choices for Arc<RwLock<C>> {
-    type Lock = C::Lock;
-
     async fn run<T: Into<SocketAddr> + Send>(&'static self, addr: T) {
         C::run_mutable_rw(self.clone(), addr).await;
     }

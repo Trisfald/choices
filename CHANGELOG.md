@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## Added
 - Derive attributes to avoid the generation of GET and PUT methods.
+- Support for `RwLock`.
 
 ## [0.3.0] - 2021-02-28
 ### Added

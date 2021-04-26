@@ -18,6 +18,7 @@ pub(crate) enum ChoicesAttribute {
     Skip(Ident),
     HideGet(Ident),
     HidePut(Ident),
+    RwLock(Ident),
     // ident = "string literal"
     RootPath(Ident, LitStr),
     // ident = arbitrary_expr
@@ -76,6 +77,7 @@ impl Parse for ChoicesAttribute {
                 "skip" => Ok(Skip(name)),
                 "hide_get" => Ok(HideGet(name)),
                 "hide_put" => Ok(HidePut(name)),
+                "rw_lock" => Ok(RwLock(name)),
                 _ => abort!(name, "unexpected attribute: {}", name_str),
             }
         }
@@ -100,6 +102,7 @@ pub(crate) struct Attributes {
     pub(crate) skip: bool,
     pub(crate) hide_get: bool,
     pub(crate) hide_put: bool,
+    pub(crate) rw_lock: bool,
     pub(crate) validator: Option<Expr>,
 }
 
@@ -112,6 +115,7 @@ impl Attributes {
             skip: false,
             hide_get: false,
             hide_put: false,
+            rw_lock: false,
             validator: None,
         }
     }
@@ -162,6 +166,15 @@ impl Attributes {
                         );
                     }
                     self.hide_put = true;
+                }
+                RwLock(ident) => {
+                    if !from_struct {
+                        abort!(
+                            ident,
+                            "#[choices(rw_lock)] can be used only on struct level"
+                        );
+                    }
+                    self.rw_lock = true;
                 }
                 Validator(ident, expr) => {
                     if from_struct {
