@@ -18,7 +18,8 @@ pub(crate) fn gen_choices(
 
     let index_data = compute_index(fields, attrs.json);
     let fields_resources = gen_fields_resources(fields, &root_path, attrs.json);
-    let fields_resources_mutable = gen_fields_resources_mutable(fields, &root_path, attrs.json);
+    let fields_resources_mutable =
+        gen_fields_resources_mutable(fields, &root_path, attrs.json, attrs.rw_lock);
 
     let macros_tk = gen_macros(
         &root_path,
@@ -26,8 +27,8 @@ pub(crate) fn gen_choices(
         &fields_resources,
         &fields_resources_mutable,
     );
-    let impl_tk = gen_impl(fields);
-    let trait_tk = gen_trait();
+    let impl_tk = gen_impl(fields, attrs.rw_lock);
+    let trait_tk = gen_trait(attrs.rw_lock);
 
     GenChoicesOutput::new(macros_tk, impl_tk, trait_tk)
 }
@@ -52,9 +53,15 @@ fn gen_fields_resources(
                     .expect("unnamed fields are not supported!");
                 let field_name = field_ident.to_string();
                 let get_reply = if json {
-                    get_reply_for_field_json(field_ident, quote! { $self })
+                    get_reply_for_field_json(
+                        field_ident,
+                        quote! { { let r: choices::ChoicesResult<_>  = Ok($self); r } }
+                    )
                 } else {
-                    get_reply_for_field_text(field_ident, quote! { $self })
+                    get_reply_for_field_text(
+                        field_ident,
+                        quote! { { let r: choices::ChoicesResult<_>  = Ok($self); r } }
+                    )
                 };
                 Some(quote! {
                     choices::warp::path!(#root_path / #field_name).and(choices::warp::path::end()).#get_reply
@@ -74,11 +81,21 @@ fn get_reply_for_field_text(field_ident: &Ident, access_pattern: TokenStream) ->
     quote! {
         map(choices::warp::reply)
         .map(move |reply| {
-            choices::warp::reply::with_header(
-                #access_pattern.#field_ident.body_string(),
-                #content_type_header,
-                #content_type_value
-            )
+            use choices::warp::{reply::{with_header, with_status}, http::StatusCode};
+            match #access_pattern {
+                Ok(config) => with_status(
+                    with_header(
+                        config.#field_ident.body_string(),
+                        #content_type_header,
+                        #content_type_value,
+                    ),
+                    StatusCode::OK,
+                ),
+                Err(err) => with_status(
+                    with_header(err.to_string(), #content_type_header, #content_type_value),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                ),
+            }
         })
     }
 }
@@ -98,34 +115,44 @@ fn get_reply_for_field_json(_field_ident: &Ident, _access_pattern: TokenStream) 
         quote! {
             map(choices::warp::reply)
             .map(move |reply| {
-                let body = choices::serde_json::to_string(&#_access_pattern.#_field_ident);
-                let status = if body.is_ok() {
-                    choices::warp::http::StatusCode::OK
-                } else {
-                    choices::warp::http::StatusCode::INTERNAL_SERVER_ERROR
-                };
-                choices::warp::reply::with_status(
-                    choices::warp::reply::with_header(
-                        match body {
-                            Ok(v) => v,
-                            Err(err) => format!("\"{}\"", err.to_string())
-                        },
-                        #content_type_header,
-                        #content_type_value
+                use choices::warp::{reply::{with_header, with_status}, http::StatusCode};
+                match #_access_pattern {
+                    Ok(config) => {
+                        let body = choices::serde_json::to_string(&config.#_field_ident);
+                        let status = if body.is_ok() {
+                            StatusCode::OK
+                        } else {
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        };
+                        with_status(
+                            with_header(
+                                match body {
+                                    Ok(v) => v,
+                                    Err(err) => format!("\"{}\"", err.to_string())
+                                },
+                                #content_type_header,
+                                #content_type_value
+                            ),
+                            status
+                        )
+                    }
+                    Err(err) => with_status(
+                        with_header(err.to_string(), #content_type_header, #content_type_value),
+                        StatusCode::INTERNAL_SERVER_ERROR,
                     ),
-                    status
-                )
+                }
             })
         }
     }
 }
 
 /// Generates the mutable fields' HTTP resources, i.e. the GET methods to retrieve the value of
-/// fields from an Arc<Mutex<T>> and the PUT methods to modify such fields.
+/// fields from an Arc<Mutex<T>> or Arc<RwLock<T>> and the PUT methods to modify such fields.
 fn gen_fields_resources_mutable(
     fields: &Punctuated<Field, Comma>,
     root_path: &TokenStream,
     json: bool,
+    rw_lock: bool,
 ) -> Vec<TokenStream> {
     fields.iter().filter_map(|field| {
         let field_attr = Attributes::from_field(field);
@@ -140,11 +167,11 @@ fn gen_fields_resources_mutable(
             let setter_ident = quote::format_ident!("set_{}", field_ident);
             let arg_type = &field.ty;
             let (get_reply, put_reply) = if json {
-                (get_reply_for_field_json(field_ident, quote! { choices.lock().unwrap() }),
-                put_reply_for_field_json(arg_type, &setter_ident))
+                (get_reply_for_field_json(field_ident, read_access_pattern(rw_lock)),
+                put_reply_for_field_json(arg_type, &setter_ident, write_access_pattern(rw_lock)))
             } else {
-                (get_reply_for_field_text(field_ident, quote! { choices.lock().unwrap() }),
-                put_reply_for_field_text(arg_type, &setter_ident))
+                (get_reply_for_field_text(field_ident, read_access_pattern(rw_lock)),
+                put_reply_for_field_text(arg_type, &setter_ident, write_access_pattern(rw_lock)))
             };
             if field_attr.hide_get {
                 Some(quote! {{
@@ -175,8 +202,32 @@ fn gen_fields_resources_mutable(
     }).collect()
 }
 
+/// Returns the TokenStream to access the configuration object in read mode.
+fn read_access_pattern(rw_lock: bool) -> TokenStream {
+    if rw_lock {
+        quote! { choices.read() }
+    } else {
+        quote! { choices.lock() }
+    }
+}
+
+/// Returns the TokenStream to access the configuration object in write mode.
+fn write_access_pattern(rw_lock: bool) -> TokenStream {
+    if rw_lock {
+        quote! { choices.write() }
+    } else {
+        quote! { choices.lock() }
+    }
+}
+
 /// Generates the warp::reply map() for PUT field, accepting text.
-fn put_reply_for_field_text(arg_type: &Type, setter_ident: &Ident) -> TokenStream {
+///
+/// `_access_pattern` represents the way the field can be accessed.
+fn put_reply_for_field_text(
+    arg_type: &Type,
+    setter_ident: &Ident,
+    _access_pattern: TokenStream,
+) -> TokenStream {
     quote! {
         and(choices::warp::body::bytes())
         .map(move |bytes: choices::bytes::Bytes| {
@@ -184,9 +235,14 @@ fn put_reply_for_field_text(arg_type: &Type, setter_ident: &Ident) -> TokenStrea
             let result: choices::ChoicesResult<#arg_type> = choices::ChoicesInput::from_chars(&bytes);
             match result {
                 Ok(value) => {
-                    match choices.lock().unwrap().#setter_ident(value) {
-                        Ok(_) => with_status("".to_string(), StatusCode::OK),
-                        Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
+                    match #_access_pattern {
+                        Ok(mut config) => {
+                            match config.#setter_ident(value) {
+                                Ok(_) => with_status("".to_string(), StatusCode::OK),
+                                Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
+                            }
+                        }
+                        Err(err) => with_status(err.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
                     }
                 }
                 Err(err) => {
@@ -198,7 +254,13 @@ fn put_reply_for_field_text(arg_type: &Type, setter_ident: &Ident) -> TokenStrea
 }
 
 /// Generates the warp::reply map() for PUT field, accepting json.
-fn put_reply_for_field_json(_arg_type: &Type, _setter_ident: &Ident) -> TokenStream {
+///
+/// `_access_pattern` represents the way the field can be accessed.
+fn put_reply_for_field_json(
+    _arg_type: &Type,
+    _setter_ident: &Ident,
+    _access_pattern: TokenStream,
+) -> TokenStream {
     #[cfg(not(feature = "json"))]
     abort_call_site!("you must enable the choices feature `json` in order to use it in a macro");
 
@@ -208,9 +270,14 @@ fn put_reply_for_field_json(_arg_type: &Type, _setter_ident: &Ident) -> TokenStr
             and(choices::warp::body::json())
             .map(move |value: #_arg_type| {
                 use choices::warp::{reply::with_status, http::StatusCode};
-                match choices.lock().unwrap().#_setter_ident(value) {
-                    Ok(_) => with_status("".to_string(), StatusCode::OK),
-                    Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
+                match #_access_pattern {
+                    Ok(mut config) => {
+                        match config.#_setter_ident(value) {
+                            Ok(_) => with_status("".to_string(), StatusCode::OK),
+                            Err(err) => with_status(err.to_string(), StatusCode::BAD_REQUEST)
+                        }
+                    }
+                    Err(err) => with_status(err.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
                 }
             })
         }
@@ -264,8 +331,9 @@ fn gen_macros(
 }
 
 /// Generates the struct impl block.
-fn gen_impl(fields: &Punctuated<Field, Comma>) -> TokenStream {
+fn gen_impl(fields: &Punctuated<Field, Comma>, rw_lock: bool) -> TokenStream {
     let setters = gen_setters(fields);
+    let filter_mutable = gen_impl_filter_mutable(rw_lock);
 
     quote! {
         #setters
@@ -279,14 +347,31 @@ fn gen_impl(fields: &Punctuated<Field, Comma>) -> TokenStream {
             create_filter!(self).boxed()
         }
 
-        /// If you want more control over the http server instance you can use this
-        /// function to retrieve the configuration's `warp::Filter`.
-        pub fn filter_mutable(
-            choices: std::sync::Arc<std::sync::Mutex<Self>>,
-        ) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
-            use choices::warp::Filter;
-            create_filter_mutable!(choices).boxed()
-        }
+        #filter_mutable
+    }
+}
+
+/// Generates the fn implementation `filter_mutable`.
+fn gen_impl_filter_mutable(rw_lock: bool) -> TokenStream {
+    macro_rules! def {
+        ($ty:ty) => {{
+            quote! {
+                /// If you want more control over the http server instance you can use this
+                /// function to retrieve the configuration's `warp::Filter`.
+                pub fn filter_mutable(
+                    choices: std::sync::Arc<$ty>,
+                ) -> choices::warp::filters::BoxedFilter<(impl choices::warp::Reply,)> {
+                    use choices::warp::Filter;
+                    create_filter_mutable!(choices).boxed()
+                }
+            }
+        }};
+    }
+
+    if rw_lock {
+        def!(std::sync::RwLock<Self>)
+    } else {
+        def!(std::sync::Mutex<Self>)
     }
 }
 
@@ -333,19 +418,38 @@ fn gen_setters(fields: &Punctuated<Field, Comma>) -> TokenStream {
 }
 
 /// Generates the Choices trait impl block.
-fn gen_trait() -> TokenStream {
+fn gen_trait(rw_lock: bool) -> TokenStream {
+    let run_mutable = gen_trait_run_mutable(rw_lock);
+
     quote! {
         async fn run<T: Into<std::net::SocketAddr> + Send>(&'static self, addr: T) {
             let filter = create_filter!(self);
             choices::warp::serve(filter).run(addr).await
         }
 
-        async fn run_mutable<T: Into<std::net::SocketAddr> + Send>(
-            choices: std::sync::Arc<std::sync::Mutex<Self>>,
-            addr: T,
-        ) {
-            let filter = create_filter_mutable!(choices);
-            choices::warp::serve(filter).run(addr).await
-        }
+        #run_mutable
+    }
+}
+
+/// Generates the trait fn implementation `run_mutable*`.
+fn gen_trait_run_mutable(rw_lock: bool) -> TokenStream {
+    macro_rules! def {
+        ($fn_name:ident, $ty:ty) => {{
+            quote! {
+                async fn $fn_name<T: Into<std::net::SocketAddr> + Send>(
+                    choices: std::sync::Arc<$ty>,
+                    addr: T,
+                ) {
+                    let filter = create_filter_mutable!(choices);
+                    choices::warp::serve(filter).run(addr).await
+                }
+            }
+        }};
+    }
+
+    if rw_lock {
+        def!(run_mutable_rw, std::sync::RwLock<Self>)
+    } else {
+        def!(run_mutable, std::sync::Mutex<Self>)
     }
 }
