@@ -1,6 +1,6 @@
 [package]
 name = "choices"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Trisfald <trisfald@gmail.com>"]
 description = "HTTP configuration service by defining a struct."
 documentation = "https://docs.rs/choices"
@@ -21,7 +21,7 @@ default = []
 json = ["serde_json", "choices-derive/json"]
 
 [dependencies]
-choices-derive = { path = "choices-derive", version = "=0.3.0" }
+choices-derive = { path = "choices-derive", version = "=0.4.0" }
 async-trait = "0.1"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 warp = "0.3"
