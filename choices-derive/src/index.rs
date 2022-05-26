@@ -1,6 +1,7 @@
-use crate::attributes::Attributes;
 use crate::util::compute_type_string;
+use crate::{attributes::Attributes, DEFAULT_ROOT_MESSAGE};
 use derive_new::new;
+use proc_macro2::TokenStream;
 #[cfg(not(feature = "json"))]
 use proc_macro_error::abort_call_site;
 use syn::{punctuated::Punctuated, token::Comma, *};
@@ -12,16 +13,31 @@ pub(crate) struct IndexData {
 }
 
 /// Returns the body of the configuration index page.
-pub(crate) fn compute_index(fields: &Punctuated<Field, Comma>, json: bool) -> IndexData {
+pub(crate) fn compute_index(
+    fields: &Punctuated<Field, Comma>,
+    json: bool,
+    root_message: &Option<TokenStream>,
+) -> IndexData {
     if json {
         compute_index_json(fields)
     } else {
-        compute_index_text(fields)
+        compute_index_text(fields, root_message)
     }
 }
 
-fn compute_index_text(fields: &Punctuated<Field, Comma>) -> IndexData {
-    let mut index = "Available configuration options:\n".to_string();
+fn compute_index_text(
+    fields: &Punctuated<Field, Comma>,
+    root_message: &Option<TokenStream>,
+) -> IndexData {
+    let mut index = if let Some(ts) = root_message {
+        let ts_str = ts.to_string();
+        ts_str[1..ts_str.len() - 1].to_string()
+    } else {
+        DEFAULT_ROOT_MESSAGE.to_string()
+    };
+    if !index.is_empty() {
+        index += "\n";
+    }
     fields.iter().for_each(|field| {
         let field_attr = Attributes::from_field(field);
         if !field_attr.skip {

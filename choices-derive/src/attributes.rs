@@ -1,7 +1,7 @@
 //! Parsing of macro attributes.
 
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort, ResultExt};
+use proc_macro_error::{abort, abort_call_site, ResultExt};
 use quote::quote;
 use syn::{
     self,
@@ -21,6 +21,7 @@ pub(crate) enum ChoicesAttribute {
     RwLock(Ident),
     // ident = "string literal"
     RootPath(Ident, LitStr),
+    RootMessage(Ident, LitStr),
     // ident = arbitrary_expr
     OnSet(Ident, Expr),
     Validator(Ident, Expr),
@@ -52,6 +53,7 @@ impl Parse for ChoicesAttribute {
                         check_empty_lit("path");
                         Ok(RootPath(name, lit))
                     }
+                    "message" => Ok(RootMessage(name, lit)),
                     _ => abort!(name, "unexpected attribute: {}", name_str),
                 }
             } else {
@@ -97,6 +99,7 @@ fn parse_choices_attributes(attrs: &[Attribute]) -> Vec<ChoicesAttribute> {
 
 pub(crate) struct Attributes {
     pub(crate) root_path: Option<TokenStream>,
+    pub(crate) root_message: Option<TokenStream>,
     pub(crate) json: bool,
     pub(crate) on_set: Option<Expr>,
     pub(crate) skip: bool,
@@ -110,6 +113,7 @@ impl Attributes {
     fn new() -> Self {
         Self {
             root_path: None,
+            root_message: None,
             json: false,
             on_set: None,
             skip: false,
@@ -136,6 +140,15 @@ impl Attributes {
                         abort!(ident, "#[choices(path)] can be used only on struct level");
                     }
                     self.root_path = Some(quote!(#path));
+                }
+                RootMessage(ident, message) => {
+                    if !from_struct {
+                        abort!(
+                            ident,
+                            "#[choices(message)] can be used only on struct level"
+                        );
+                    }
+                    self.root_message = Some(quote!(#message));
                 }
                 OnSet(ident, expr) => {
                     if from_struct {
@@ -186,6 +199,9 @@ impl Attributes {
                     self.validator = Some(expr);
                 }
             }
+        }
+        if self.json && self.root_message.is_some() {
+            abort_call_site!("#[choices(message)] and #[choices(json)] can't be used together!");
         }
     }
 

@@ -17,7 +17,7 @@ struct TimePoint {
 
 impl ChoicesInput<'_> for TimePoint {
     fn from_chars(bytes: &Bytes) -> ChoicesResult<Self> {
-        let chars = std::str::from_utf8(&bytes)?;
+        let chars = std::str::from_utf8(bytes)?;
         let v: Vec<&str> = chars.split('.').collect();
         if v.len() == 2 {
             let years = v[0].parse::<u32>()?;

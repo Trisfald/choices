@@ -71,7 +71,7 @@ default_choices_input_impl! {bool, char, i128, i16, i32, i64, i8, u128, u16, u32
 
 impl<'a> ChoicesInput<'a> for &'a str {
     fn from_chars(bytes: &'a Bytes) -> ChoicesResult<Self> {
-        Ok(str::from_utf8(&bytes)?)
+        Ok(str::from_utf8(bytes)?)
     }
 }
 
