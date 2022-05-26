@@ -12,15 +12,19 @@ Run the configuration service on your own server instance.
 
 Customizing the configuration root path.
 
+### [Configure root message](configure_root_message.rs)
+
+Customizing the configuration root message.
+
 ### [Change configuration](change_config.rs)
 
 Shows how to modify the configuration programmatically or through the API.
 
-### [User defined field type](user_type.rs) 
+### [User defined field type](user_type.rs)
 
 Define your own configuration types.
 
-### [User defined field type (json)](user_type_json.rs) 
+### [User defined field type (json)](user_type_json.rs)
 
 Define your own configuration types (json version).
 

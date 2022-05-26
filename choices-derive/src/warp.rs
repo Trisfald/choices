@@ -16,7 +16,7 @@ pub(crate) fn gen_choices(
     let attrs = Attributes::from_struct(struct_attrs);
     let root_path = attrs.root_path.unwrap_or(quote! { #DEFAULT_ROOT_PATH });
 
-    let index_data = compute_index(fields, attrs.json);
+    let index_data = compute_index(fields, attrs.json, &attrs.root_message);
     let fields_resources = gen_fields_resources(fields, &root_path, attrs.json);
     let fields_resources_mutable =
         gen_fields_resources_mutable(fields, &root_path, attrs.json, attrs.rw_lock);

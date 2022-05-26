@@ -18,6 +18,7 @@ use quote::quote;
 use syn::{punctuated::Punctuated, token::Comma, *};
 
 pub(crate) const DEFAULT_ROOT_PATH: &str = "config";
+pub(crate) const DEFAULT_ROOT_MESSAGE: &str = "Available configuration options:";
 
 /// Output of choice's generator.
 #[derive(new)]
