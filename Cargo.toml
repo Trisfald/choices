@@ -7,7 +7,7 @@ documentation = "https://docs.rs/choices"
 repository = "https://github.com/trisfald/choices"
 keywords = ["configuration", "derive", "http"]
 categories = ["web-programming"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 readme = "README.md"
 include = [
@@ -23,9 +23,9 @@ json = ["serde_json", "choices-derive/json"]
 [dependencies]
 choices-derive = { path = "choices-derive", version = "=0.4.0" }
 async-trait = "0.1"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 warp = "0.3"
-bytes = "1.0"
+bytes = "1.1"
 serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
