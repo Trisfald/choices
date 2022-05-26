@@ -7,7 +7,7 @@ documentation = "https://docs.rs/choices-derive"
 repository = "https://github.com/trisfald/choices"
 keywords = ["configuration", "derive", "http"]
 categories = ["web-programming"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 [features]

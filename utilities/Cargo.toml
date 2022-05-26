@@ -2,10 +2,10 @@
 name = "util"
 version = "0.1.0"
 authors = ["trisfald"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 reqwest = "0.11"
 rand = "0.8"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 choices = { path = "../", features = ["json"] }
