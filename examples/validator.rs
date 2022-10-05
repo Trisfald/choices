@@ -4,6 +4,8 @@ use choices::{Choices, ChoicesError, ChoicesResult};
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 
+type FileValidatorFn = dyn Fn(&String) -> ChoicesResult<()> + Send + Sync;
+
 #[derive(Choices)]
 struct Config {
     // Use a free function.
@@ -13,7 +15,7 @@ struct Config {
     #[choices(validator = (self.file_validator))]
     file: String,
     #[choices(skip)]
-    file_validator: Box<dyn Fn(&String) -> ChoicesResult<()> + Send + Sync>,
+    file_validator: Box<FileValidatorFn>,
 }
 
 lazy_static! {
