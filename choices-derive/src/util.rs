@@ -19,7 +19,7 @@ pub(crate) fn compute_type_string(ty: &Type) -> String {
                                 if i != 0 {
                                     acc.push_str(", ");
                                 }
-                                acc.push_str(&compute_type_string(&inner_type));
+                                acc.push_str(&compute_type_string(inner_type));
                             } else {
                                 abort_call_site!(
                                     "choices supports only generic arguments of kind Type"

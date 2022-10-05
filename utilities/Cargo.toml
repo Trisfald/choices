@@ -1,11 +1,12 @@
 [package]
 name = "util"
-version = "0.1.0"
-authors = ["trisfald"]
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
 reqwest = "0.11"
 rand = "0.8"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio.workspace = true
 choices = { path = "../", features = ["json"] }
